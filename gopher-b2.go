@@ -21,7 +21,7 @@ func main () {
 }
 
 // Calling this function reads settings.toml file in "/config" and returns the HTTP response body
-func authorizeAccount() []byte {
+func authorizeAccount() ([]byte, []byte)  {
 	var Config Configuration
 	viper.SetConfigName("settings")     // no need to include file extension
   viper.AddConfigPath("config")  // set the path of your config file
@@ -67,5 +67,5 @@ func authorizeAccount() []byte {
 	fmt.Println("response Body : ", string(respBody))
 	*/
 
-	return respBody
+	return respBody resp.Status
 }
