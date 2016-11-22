@@ -1,4 +1,4 @@
-package main
+package gopher-b2
 
 import (
 	"encoding/base64"
@@ -14,10 +14,12 @@ type Configuration struct {
     APPLICATION_ID	string
     API_URL	string
 }
+
 func main () {
 	//readConfiguration()
 	fmt.Println(string(authorizeAccount()))
 }
+
 // Calling this function reads settings.toml file in "/config" and returns the HTTP response body
 func authorizeAccount() []byte {
 	var Config Configuration
