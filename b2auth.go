@@ -1,24 +1,38 @@
-package b2auth
-// B2 API Authorization Related Functions
+package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"bytes"
+	"github.com/spf13/viper"
 )
 
-const (
-	ACCOUNT_ID     = "0e1000668b00"
-	APPLICATION_ID = "001t38150d55555estc00ba25f666666d380c23b9"
-	API_URL        = "https://api.backblazeb2.com/b2api/v1/b2_authorize_account"
-)
-
-func sendRequest() {
+type Configuration struct {
+    ACCOUNT_ID	string
+    APPLICATION_ID	string
+    API_URL	string
+}
+func main () {
+	//readConfiguration()
+	fmt.Println(string(authorizeAccount()))
+}
+// Calling this function reads settings.toml file in "/config" and returns the HTTP response body
+func authorizeAccount() []byte {
+	var Config Configuration
+	viper.SetConfigName("settings")     // no need to include file extension
+  viper.AddConfigPath("config")  // set the path of your config file
+	err := viper.ReadInConfig()
+  if err != nil {
+    fmt.Println("Config file not found...")
+  } else {
+		Config.ACCOUNT_ID = viper.GetString("Account1.ACCOUNT_ID")
+		Config.APPLICATION_ID = viper.GetString("Account1.APPLICATION_ID")
+		Config.API_URL = viper.GetString("Account1.API_URL")
+	}
 	// Encode credentials to base64
-	credentials := base64.StdEncoding.EncodeToString([]byte(ACCOUNT_ID + ":" + APPLICATION_ID))
-	fmt.Println(credentials)
+	credentials := base64.StdEncoding.EncodeToString([]byte(Config.ACCOUNT_ID + ":" + Config.APPLICATION_ID))
 
 	// Request (POST https://api.backblazeb2.com/b2api/v1/b2_authorize_account)
 	json := []byte(`{}`)
@@ -28,7 +42,7 @@ func sendRequest() {
 	client := &http.Client{}
 
 	// Create request
-	req, err := http.NewRequest("POST", API_URL, body)
+	req, err := http.NewRequest("POST", Config.API_URL, body)
 
 	// Headers
 	req.Header.Add("Authorization", "Basic "+credentials)
@@ -45,7 +59,11 @@ func sendRequest() {
 	respBody, _ := ioutil.ReadAll(resp.Body)
 
 	// Display Results
+	/*
 	fmt.Println("response Status : ", resp.Status)
 	fmt.Println("response Headers : ", resp.Header)
 	fmt.Println("response Body : ", string(respBody))
+	*/
+
+	return respBody
 }
