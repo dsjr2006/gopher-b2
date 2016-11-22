@@ -1,5 +1,5 @@
 // B2 API Authorization Related Functions
-package github.com/dsjr2006/gopher-b2/b2auth
+package b2auth
 
 import (
 	"bytes"
