@@ -1,4 +1,4 @@
-package gopher-b2
+package gopherb2
 
 import (
 	"encoding/base64"
