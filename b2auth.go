@@ -1,5 +1,5 @@
-// B2 API Authorization Related Functions
 package b2auth
+// B2 API Authorization Related Functions
 
 import (
 	"bytes"
