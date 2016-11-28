@@ -27,6 +27,9 @@ type APIAuthorization struct {
 	DownloadURL string `json:"downloadURL"`
 	MinimumPartSize int `json:"minimumPartSize"`
 }
+type Buckets struct {
+	Buckets []string `json:"buckets"`
+}
 func main () {
 	//readConfiguration()
 	//fmt.Println(string(authorizeAccount()))
@@ -43,7 +46,7 @@ func authorizeAccount() APIAuthorization  {
   } else {
 		Config.ACCOUNT_ID = viper.GetString("Account1.ACCOUNT_ID")
 		Config.APPLICATION_ID = viper.GetString("Account1.APPLICATION_ID")
-		Config.API_URL = viper.GetString("Account1.API_AuthorizationURL")
+		Config.API_URL = viper.GetString("Account1.API_URL")
 	}
 	// Encode credentials to base64
 	credentials := base64.StdEncoding.EncodeToString([]byte(Config.ACCOUNT_ID + ":" + Config.APPLICATION_ID))
@@ -56,7 +59,7 @@ func authorizeAccount() APIAuthorization  {
 	client := &http.Client{}
 
 	// Create request
-	req, err := http.NewRequest("POST", Config.API_URL, body)
+	req, err := http.NewRequest("POST", Config.API_URL+"b2_authorize_account", body)
 
 	// Headers
 	req.Header.Add("Authorization", "Basic "+credentials)
@@ -88,7 +91,8 @@ func authorizeAccount() APIAuthorization  {
 
 	return apiAuth
 }
-func listBuckets() []byte {
+// Calls authorizeAccount then connects to API to request list of all B2 buckets and returns Response type
+func listBuckets() Response {
 	// Authorize and Get API Token
 	authorizationResponse:= authorizeAccount()
 
@@ -117,12 +121,63 @@ func listBuckets() []byte {
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)
 
+	var apiResponse Response
+	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
 	// Display Results
 	/*
 	fmt.Println("response Status : ", resp.Status)
 	fmt.Println("response Headers : ", resp.Header)
 	fmt.Println("response Body : ", string(respBody))
 	*/
+	var bucketList Buckets
+	err = json.Unmarshal(respBody, &bucketList)
+	if(err != nil){
+		fmt.Println("JSON Parse Failed", err)
+	}
 
-	return respBody
+	return apiResponse
+}
+// Creates new B2 bucket and returns API response
+func createBucket(bucketName string, bucketPublic bool) Response {
+	// Check bucket name validity
+
+	// Public or private bucketName
+	var bucketType = "allPrivate"
+	if bucketPublic == true {
+		bucketType = "allPublic"
+	}
+
+
+	// Authorize and Get API Token
+	authorizationResponse:= authorizeAccount()
+
+	// Request (POST https://api001.backblazeb2.com/b2api/v1/b2_create_bucket)
+
+	jsonData := []byte(`{"accountId": "`+ authorizationResponse.AccountID +`", "bucketName":"`+ bucketName +`", "bucketType":"`+ bucketType +`" }`)
+	body := bytes.NewBuffer(jsonData)
+
+	// Create client
+	client := &http.Client{}
+
+	// Create request
+	req, err := http.NewRequest("POST", authorizationResponse.ApiURL+"/b2api/v1/b2_create_bucket", body)
+
+	// Headers
+	req.Header.Add("Authorization", authorizationResponse.AuthorizationToken)
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+
+	// Fetch Request
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println("Failure : ", err)
+	}
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+
+	var apiResponse Response
+	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
+
+	return apiResponse
 }

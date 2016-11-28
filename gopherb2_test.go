@@ -12,6 +12,11 @@ func TestToReturnAuthorization (t *testing.T) {
 }
 // Test listBuckets
 func TestToReturnBucketList (t *testing.T) {
-  bucketList := listBuckets()
-  fmt.Println("\nBuckets JSON:\n" + string(bucketList))
+  apiResponse := listBuckets()
+  fmt.Println("\nBuckets JSON:\n" + string(apiResponse.Body))
+}
+// Test createBucket
+func TestToCreateBucket (t *testing.T) {
+  apiResponse := createBucket("testbucket",false)
+  fmt.Println(string(apiResponse.Body))
 }
