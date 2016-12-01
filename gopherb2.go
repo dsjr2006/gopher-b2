@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"io/ioutil"
 	"net/http"
 	"bytes"
@@ -27,9 +28,20 @@ type APIAuthorization struct {
 	DownloadURL string `json:"downloadURL"`
 	MinimumPartSize int `json:"minimumPartSize"`
 }
-type Buckets struct {
-	Buckets []string `json:"buckets"`
+type BucketList struct {
+	Buckets []json.RawMessage `json:"buckets"`
 }
+type Buckets struct {
+	Bucket []struct {
+		AccountID string `json:"accountId"`
+		BucketID string `json:"bucketId"`
+		BucketName string `json:"bucketName"`
+		BucketType string `json:"bucketType"`
+		LifecycleRules []string `json:"lifecycleRules"`
+		Revision int `json:"revision"`
+	} `json:"buckets"`
+}
+
 func main () {
 	//readConfiguration()
 	//fmt.Println(string(authorizeAccount()))
@@ -86,7 +98,7 @@ func authorizeAccount() APIAuthorization  {
 	var apiAuth APIAuthorization
 	err = json.Unmarshal(respBody, &apiAuth)
 	if(err != nil){
-		fmt.Println("JSON Parse Failed", err)
+		fmt.Println("API Auth JSON Parse Failed", err)
 	}
 
 	return apiAuth
@@ -129,11 +141,22 @@ func listBuckets() Response {
 	fmt.Println("response Headers : ", resp.Header)
 	fmt.Println("response Body : ", string(respBody))
 	*/
-	var bucketList Buckets
+	bucketList := &BucketList{}
+	var buckets Buckets
 	err = json.Unmarshal(respBody, &bucketList)
 	if(err != nil){
-		fmt.Println("JSON Parse Failed", err)
+		fmt.Println("Buckets List JSON Parse Failed", err)
 	}
+
+	err = json.Unmarshal(respBody, &buckets)
+	if(err != nil){
+		fmt.Println("Bucket JSON Parse Failed", err)
+		log.Fatal(err)
+	}
+
+	fmt.Println("Bucket 0: " + string(bucketList.Buckets[0]))
+	fmt.Printf("Buckets: %+v\n", buckets)
+	fmt.Println("Bucket 0 Name: " + (buckets.Bucket[0].BucketName))
 
 	return apiResponse
 }
