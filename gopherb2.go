@@ -28,7 +28,7 @@ type APIAuthorization struct {
 	DownloadURL string `json:"downloadURL"`
 	MinimumPartSize int `json:"minimumPartSize"`
 }
-type BucketList struct {
+type BucketListJSON struct {
 	Buckets []json.RawMessage `json:"buckets"`
 }
 type Buckets struct {
@@ -41,7 +41,11 @@ type Buckets struct {
 		Revision int `json:"revision"`
 	} `json:"buckets"`
 }
-
+type UploadURL struct {
+	AuthorizationToken string `json:"authorizationToken"`
+	BucketId string `json:"bucketId"`
+	URL string `json:"uploadUrl"`
+}
 func main () {
 	//readConfiguration()
 	//fmt.Println(string(authorizeAccount()))
@@ -103,8 +107,8 @@ func authorizeAccount() APIAuthorization  {
 
 	return apiAuth
 }
-// Calls authorizeAccount then connects to API to request list of all B2 buckets and returns Response type
-func listBuckets() Response {
+// Calls authorizeAccount then connects to API to request list of all B2 buckets and information, returns type 'Buckets'
+func listBuckets() Buckets {
 	// Authorize and Get API Token
 	authorizationResponse:= authorizeAccount()
 
@@ -141,24 +145,24 @@ func listBuckets() Response {
 	fmt.Println("response Headers : ", resp.Header)
 	fmt.Println("response Body : ", string(respBody))
 	*/
-	bucketList := &BucketList{}
+	bucketList := &BucketListJSON{}
 	var buckets Buckets
-	err = json.Unmarshal(respBody, &bucketList)
+	err = json.Unmarshal(apiResponse.Body, &bucketList)
 	if(err != nil){
 		fmt.Println("Buckets List JSON Parse Failed", err)
 	}
 
-	err = json.Unmarshal(respBody, &buckets)
+	err = json.Unmarshal(apiResponse.Body, &buckets)
 	if(err != nil){
 		fmt.Println("Bucket JSON Parse Failed", err)
 		log.Fatal(err)
 	}
-
+	/*
 	fmt.Println("Bucket 0: " + string(bucketList.Buckets[0]))
 	fmt.Printf("Buckets: %+v\n", buckets)
 	fmt.Println("Bucket 0 Name: " + (buckets.Bucket[0].BucketName))
-
-	return apiResponse
+	*/
+	return buckets
 }
 // Creates new B2 bucket and returns API response
 func createBucket(bucketName string, bucketPublic bool) Response {
@@ -203,4 +207,46 @@ func createBucket(bucketName string, bucketPublic bool) Response {
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
 
 	return apiResponse
+}
+// Gets Upload URL
+func getUploadURL(bucketId string) UploadURL {
+	// Authorize and Get API Token
+	authorizationResponse:= authorizeAccount()
+
+	// Get Upload URL (POST https://api001.backblazeb2.com/b2api/v1/b2_get_upload_url)
+
+	jsonData := []byte(`{"bucketId": "`+ bucketId +`"}`)
+	body := bytes.NewBuffer(jsonData)
+
+	// Create client
+	client := &http.Client{}
+
+	// Create request
+	req, err := http.NewRequest("POST", authorizationResponse.ApiURL+"/b2api/v1/b2_get_upload_url", body)
+
+	// Headers
+	req.Header.Add("Authorization", authorizationResponse.AuthorizationToken)
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+
+	// Fetch Request
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println("Failure : ", err)
+	}
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	var apiResponse Response
+	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
+
+	var uploadURL UploadURL
+
+	err = json.Unmarshal(apiResponse.Body, &uploadURL)
+	if(err != nil){
+		fmt.Println("Bucket JSON Parse Failed", err)
+		log.Fatal(err)
+	}
+
+	return uploadURL
 }
