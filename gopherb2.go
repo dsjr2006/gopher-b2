@@ -280,10 +280,11 @@ func uploadFile(bucketId string, filePath string) Response {
 	if _, err := io.Copy(buffer, file); err != nil {
 		log.Fatal(err)
 	}
-	body := buffer
-
-
 	checkError(err)
+	body := buffer
+	// Get File Modification Time as int64 value in milliseconds since midnight, January 1, 1970 UTC
+	fileModTimeMillis := fileInfo.ModTime().UnixNano() / 1000000
+
 	// Create request
 	req, err := http.NewRequest("POST", uploadURL.URL, body)
 
@@ -292,7 +293,8 @@ func uploadFile(bucketId string, filePath string) Response {
 	req.Header.Add("Content-Type", "b2/x-auto")
 	req.Header.Add("Content-Length", string( fileInfo.Size()) )
 	req.Header.Add("X-Bz-Content-Sha1", fileSHA1(filePath) )
-	req.Header.Add("X-Bz-File-Name", fileInfo.Name())
+	req.Header.Add("X-Bz-File-Name", fileInfo.Name()) //Need to encode names properly! according to B2 docs
+	req.Header.Add("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", fileModTimeMillis) )
 	// Fetch Request
 	resp, err := client.Do(req)
 
