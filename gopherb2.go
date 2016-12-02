@@ -3,12 +3,16 @@ package gopherb2
 import (
 	"encoding/base64"
 	"encoding/json"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"os"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"bytes"
 	"github.com/spf13/viper"
+	"crypto/sha1"
 )
 
 type Configuration struct {
@@ -50,7 +54,11 @@ func main () {
 	//readConfiguration()
 	//fmt.Println(string(authorizeAccount()))
 }
-
+func checkError(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct
 func authorizeAccount() APIAuthorization  {
 	var Config Configuration
@@ -136,6 +144,7 @@ func listBuckets() Buckets {
 
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
@@ -202,13 +211,14 @@ func createBucket(bucketName string, bucketPublic bool) Response {
 
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
 
 	return apiResponse
 }
-// Gets Upload URL
+// Requests Upload URL from API and returns 'UploadURL'
 func getUploadURL(bucketId string) UploadURL {
 	// Authorize and Get API Token
 	authorizationResponse:= authorizeAccount()
@@ -237,6 +247,7 @@ func getUploadURL(bucketId string) UploadURL {
 
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
 
@@ -249,4 +260,75 @@ func getUploadURL(bucketId string) UploadURL {
 	}
 
 	return uploadURL
+}
+// Upload single file to B2
+func uploadFile(bucketId string, filePath string) Response {
+	// Authorize and Get Upload URL
+	uploadURL:= getUploadURL(bucketId)
+
+	fmt.Println("File: " + filePath + "\n")
+	file, err := os.Open(filePath)
+	defer file.Close()
+	checkError(err)
+	fileInfo, err := file.Stat()
+	checkError(err)
+
+	// Create client
+	client := &http.Client{}
+	// Request Body
+	buffer := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buffer, file); err != nil {
+		log.Fatal(err)
+	}
+	body := buffer
+
+
+	checkError(err)
+	// Create request
+	req, err := http.NewRequest("POST", uploadURL.URL, body)
+
+	// Headers
+	req.Header.Add("Authorization", uploadURL.AuthorizationToken)
+	req.Header.Add("Content-Type", "b2/x-auto")
+	req.Header.Add("Content-Length", string( fileInfo.Size()) )
+	req.Header.Add("X-Bz-Content-Sha1", fileSHA1(filePath) )
+	req.Header.Add("X-Bz-File-Name", fileInfo.Name())
+	// Fetch Request
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println("Failure : ", err)
+	}
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	var apiResponse Response
+	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body:respBody}
+
+	return apiResponse
+}
+func fileSHA1(filePath string) string {
+	file, err := os.Open(filePath)
+	defer file.Close()
+	checkError(err)
+	hash := sha1.New()
+	// Copy file into hash interface
+	if _, err := io.Copy(hash, file); err != nil {
+		return "fail"
+	}
+	// Get 20 bytes hash
+	hashAsBytes := hash.Sum(nil)[:20]
+
+	return hex.EncodeToString(hashAsBytes)
+}
+func encodeFilename(filePath string) string {
+	file, err := os.Open(filePath)
+	defer file.Close()
+	checkError(err)
+	fileInfo, err := file.Stat()
+	checkError(err)
+	encodedFilename := string(fileInfo.Name())
+	fmt.Println(encodedFilename)
+	return encodedFilename
 }

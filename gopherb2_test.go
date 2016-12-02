@@ -30,3 +30,10 @@ func TestToReturnUploadURL (t *testing.T) {
   fmt.Println(uploadResponse.URL)
   fmt.Println("\n^ Get Upload URL Test Completed\n")
 }
+// Test uploadFile
+func TestToUploadFile (t *testing.T) {
+  apiResponse := uploadFile("b6ee61624837a6c6588b0715",
+    "/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/testfile.txt")
+  fmt.Println(string(apiResponse.Body))
+  fmt.Println("\n^ Upload File Test Completed\n")
+}
