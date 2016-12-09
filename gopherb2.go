@@ -48,22 +48,22 @@ type UploadURL struct {
 	BucketId           string `json:"bucketId"`
 	URL                string `json:"uploadUrl"`
 }
-
-
-func checkError(e error) {
-  if e != nil {
-    panic(e)
-  }
-}
 // Setup Logging
 var logger = zap.New(
 	zap.NewJSONEncoder(),
 )
-
+// Simple Error check for fatal errors
+func checkError(e error) {
+  if e != nil {
+		logger.Fatal("checkError failed",
+			zap.Error(e),
+		)
+		panic(e)
+  }
+}
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct
 func B2AuthorizeAccount() APIAuthorization {
 	var Config Configuration
-	logger.Info("Authorizing B2")
 	viper.SetConfigName("settings") // no need to include file extension
 	viper.AddConfigPath("config")   // set the path of your config file
 	err := viper.ReadInConfig()
@@ -96,7 +96,7 @@ func B2AuthorizeAccount() APIAuthorization {
 
 	if err != nil {
 		logger.Warn("API Auth Request Failed.",
-			zap.Error("Error: ", err)
+			zap.Error(err),
 		)
 	}
 
@@ -116,7 +116,7 @@ func B2AuthorizeAccount() APIAuthorization {
 	if err != nil {
 		fmt.Println("API Auth JSON Parse Failed", err)
 		logger.Fatal("Cannot parse API Auth Response JSON.",
-			zap.Error("Error: ", err)
+			zap.Error(err),
 		)
 	}
 
@@ -304,6 +304,55 @@ func B2UploadFile(bucketId string, filePath string) Response {
 	resp, err := client.Do(req)
 
 	if err != nil {
+		logger.Warn("Upload Request Failed",
+			zap.Error(err),
+		)
+	}
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	var apiResponse Response
+	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
+
+	return apiResponse
+}
+// Begin Large File Upload
+func B2StartLargeFile(bucketId string, filePath string) Response {
+	// Authorize
+	apiAuth := B2AuthorizeAccount()
+
+	// Open File and Get File Stats
+	file, err := os.Open(filePath)
+	defer file.Close()
+	checkError(err)
+	fileInfo, err := file.Stat()
+	checkError(err)
+	// Get File Modification Time as int64 value in milliseconds since midnight, January 1, 1970 UTC
+	fileModTimeMillis := fileInfo.ModTime().UnixNano() / 1000000
+	// Get File sha1
+	largeFileSHA1 := fileSHA1(filePath)
+	if largeFileSHA1 == "fail" {
+		logger.Fatal("Cannot parse API Auth Response JSON.",)
+	}
+
+	// Create client
+	client := &http.Client{}
+	// Request Body : JSON object
+	jsonBody := []byte(`{"fileInfo": {"large_file_sha1": "`+ largeFileSHA1 +`","src_last_modified_millis": "`+ fmt.Sprintf("%d", fileModTimeMillis) +`"},"bucketId": "`+ bucketId +`","fileName": "`+fileInfo.Name()+`","contentType": "b2/x-auto"}`)
+	body := bytes.NewBuffer(jsonBody)
+	fmt.Println(body)
+
+	// Create request
+	req, err := http.NewRequest("POST", "https://api001.backblazeb2.com/b2api/v1/b2_start_large_file", body)
+
+	// Headers
+	req.Header.Add("Authorization", apiAuth.AuthorizationToken)
+
+	// Fetch Request
+	resp, err := client.Do(req)
+
+	if err != nil {
 		fmt.Println("Failure : ", err)
 	}
 
@@ -322,6 +371,9 @@ func fileSHA1(filePath string) string {
 	hash := sha1.New()
 	// Copy file into hash interface
 	if _, err := io.Copy(hash, file); err != nil {
+		logger.Warn("File SHA1 Hash Failure",
+			zap.Error(err),
+		)
 		return "fail"
 	}
 	// Get 20 bytes hash
