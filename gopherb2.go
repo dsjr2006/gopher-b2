@@ -48,6 +48,18 @@ type UploadURL struct {
 	BucketId           string `json:"bucketId"`
 	URL                string `json:"uploadUrl"`
 }
+type B2File struct {
+	AccountID string `json:"accountId"`
+	BucketID string `json:"bucketId"`
+	ContentType string `json:"contentType"`
+	FileID string `json:"fileId"`
+	FileInfo struct {
+		LargeFileSHA1 string `json:"large_file_sha1"`
+		LastModificationMillis int64 `json:"src_last_modified_millis,string"`
+	} `json:"fileInfo"`
+	FileName string `json:"fileName"`
+	UploadTimestamp int64 `json:"uploadTimestamp"`
+}
 // Setup Logging
 var logger = zap.New(
 	zap.NewJSONEncoder(),
@@ -318,7 +330,7 @@ func B2UploadFile(bucketId string, filePath string) Response {
 	return apiResponse
 }
 // Begin Large File Upload
-func B2StartLargeFile(bucketId string, filePath string) Response {
+func B2StartLargeFile(bucketId string, filePath string) (Response, B2File) {
 	// Authorize
 	apiAuth := B2AuthorizeAccount()
 
@@ -341,7 +353,6 @@ func B2StartLargeFile(bucketId string, filePath string) Response {
 	// Request Body : JSON object
 	jsonBody := []byte(`{"fileInfo": {"large_file_sha1": "`+ largeFileSHA1 +`","src_last_modified_millis": "`+ fmt.Sprintf("%d", fileModTimeMillis) +`"},"bucketId": "`+ bucketId +`","fileName": "`+fileInfo.Name()+`","contentType": "b2/x-auto"}`)
 	body := bytes.NewBuffer(jsonBody)
-	fmt.Println(body)
 
 	// Create request
 	req, err := http.NewRequest("POST", "https://api001.backblazeb2.com/b2api/v1/b2_start_large_file", body)
@@ -362,7 +373,18 @@ func B2StartLargeFile(bucketId string, filePath string) Response {
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
 
-	return apiResponse
+	// Parse API Response File Info to B2File if request is successful
+	var b2File B2File
+	if apiResponse.Status == "200 OK" {
+		err = json.Unmarshal(apiResponse.Body, &b2File)
+		if err != nil {
+			fmt.Println("File JSON Parse Failed", err)
+			log.Fatal(err)
+		}
+		return apiResponse, b2File
+	}
+
+	return apiResponse, b2File
 }
 func fileSHA1(filePath string) string {
 	file, err := os.Open(filePath)

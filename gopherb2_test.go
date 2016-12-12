@@ -39,8 +39,8 @@ func TestToUploadFile (t *testing.T) {
 }
 // Test B2StartLargeFile
 func TestToStartLargeFile (t *testing.T) {
-  apiResponse := B2StartLargeFile("b6ee61624837a6c6588b0715",
-    "/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/largetestfile.test")
+  apiResponse, fileResponse := B2StartLargeFile("b6ee61624837a6c6588b0715","/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/largetestfile.test")
   fmt.Println(string(apiResponse.Body))
+  fmt.Println("\nFile Name: "+ fileResponse.FileName + "\nFile ID: " + fileResponse.FileID)
   fmt.Println("\n^ Start Large File Test Completed\n")
 }
