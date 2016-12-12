@@ -48,6 +48,11 @@ type UploadURL struct {
 	BucketId           string `json:"bucketId"`
 	URL                string `json:"uploadUrl"`
 }
+type UploadPartResponse struct {
+	AuthorizationToken string `json:"authorizationToken"`
+	FileID             string `json:"fileId"`
+	UploadURL          string `json:"uploadUrl"`
+}
 type B2File struct {
 	AccountID string `json:"accountId"`
 	BucketID string `json:"bucketId"`
@@ -385,6 +390,44 @@ func B2StartLargeFile(bucketId string, filePath string) (Response, B2File) {
 	}
 
 	return apiResponse, b2File
+}
+func B2GetUploadPartURL(fileId string) UploadPartResponse {
+	apiAuth := B2AuthorizeAccount()
+
+	// Create client
+	client := &http.Client{}
+	// Request Body : JSON object with fileId
+	jsonBody := []byte(`{"fileId": "`+ fileId +`"}`)
+	body := bytes.NewBuffer(jsonBody)
+
+	// Create request
+	req, err := http.NewRequest("POST", apiAuth.ApiURL + "/b2api/v1/b2_get_upload_part_url", body)
+
+	// Headers
+	req.Header.Add("Authorization", apiAuth.AuthorizationToken)
+
+	// Fetch Request
+	resp, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println("Failure : ", err)
+	}
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+
+	var uploadPartResponse UploadPartResponse
+	if resp.Status != "200 OK" {
+		logger.Fatal("Could not obtain Part Upload URL", zap.String("Response",string(respBody)),)
+	}else if resp.Status == "200 OK" {
+		err = json.Unmarshal(respBody, &uploadPartResponse)
+		if err != nil {
+			logger.Fatal("Upload Part Response JSON Parse Failed", zap.Error(err),)
+		}
+	}
+	return uploadPartResponse
 }
 func fileSHA1(filePath string) string {
 	file, err := os.Open(filePath)
