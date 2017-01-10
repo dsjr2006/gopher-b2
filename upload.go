@@ -13,6 +13,28 @@ import (
 	"github.com/uber-go/zap"
 )
 
+type LargeFile struct {
+	Name                   string
+	SHA1                   string
+	Pieces                 int
+	OrigPath               string
+	Temp                   []TempPiece
+	LastModificationMillis int64
+	FileID                 string
+	Size                   int64
+}
+type TempPiece struct {
+	OrigFilePath       string
+	OrigFileName       string
+	PieceNum           int
+	SHA1               string
+	Size               int64
+	Path               string
+	URL                string
+	AuthorizationToken string
+	FileID             string
+	UploadStatus       string
+}
 type UploadURL struct {
 	AuthorizationToken string `json:"authorizationToken"`
 	BucketId           string `json:"bucketId"`
@@ -25,6 +47,25 @@ TODO: Check SHA1 match after upload
 TODO: Verbose errors
 TODO: Info Log
 */
+func UploadFile(bucketId string, filePath string) {
+	// Determine Upload Method
+	file, err := os.Stat(filePath)
+
+	// defer file.Close()
+	checkError(err)
+	/*
+	fileInfo, err := file.Stat()
+	checkError(err)
+	*/
+
+	if file.Size() < 104857600 {
+		B2UploadFile(bucketId, filePath)
+	} else {
+		B2LargeFileUpload(bucketId, filePath)
+	}
+
+	return
+}
 func B2UploadFile(bucketId string, filePath string) {
 	// Authorize and Get Upload URL
 	uploadURL := B2GetUploadURL(bucketId)
@@ -92,7 +133,7 @@ func B2UploadFile(bucketId string, filePath string) {
 	return
 }
 
-func B2LargeFileUpload(bucketId string, filePath string) (Response, error) {
+func B2LargeFileUpload(bucketId string, filePath string) {
 	// Open File and Get File Stats
 	file, err := os.Open(filePath)
 	defer file.Close()
@@ -147,9 +188,7 @@ func B2LargeFileUpload(bucketId string, filePath string) (Response, error) {
 		removeTempFiles(largeFile)
 	}
 
-	var apiResponse Response
-	// TODO: Handle API Response
-	return apiResponse, err
+	return
 }
 
 // Begin Large File Upload

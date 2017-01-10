@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli"
 )
 
+
 func main() {
 	//var logTo string
 
@@ -20,6 +21,10 @@ func main() {
 		cli.StringFlag{
 			Name:  "log",
 			Usage: "gopherb2 -log `gopher.log`",
+		},
+		cli.BoolFlag{
+			Name:			"debug,d",
+			Usage:			"`-debug|-d` [command]",
 		},
 	}
 

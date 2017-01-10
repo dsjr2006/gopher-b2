@@ -60,11 +60,8 @@ func TestToGetUploadPartURL(t *testing.T) {
 */
 
 // Test B2LargeFileUpload
-func TestToUploadLargeFile(t *testing.T) {
-	apiRespone, err := B2LargeFileUpload("b6ee61624837a6c6588b0715", "/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/rbsp_launch_1080p.mp4")
-	if err != nil {
-		fmt.Println("Fatal error %v", err)
-	}
-	fmt.Println("\nLarge Upload Response Body: *Nothing right now\n" + string(apiRespone.Body))
+func TestToUploadFile(t *testing.T) {
+	UploadFile("b6ee61624837a6c6588b0715", "/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/rbsp_launch_1080p.mp4")
+
 	fmt.Println("\n^ Upload Large File Test Completed\n")
 }

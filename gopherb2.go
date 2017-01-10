@@ -21,14 +21,7 @@ import (
 	"github.com/uber-go/zap"
 )
 
-// Setup Logging
-var logger = zap.New(
-	zap.NewJSONEncoder(),
-)
 
-func init() {
-
-}
 
 type Configuration struct {
 	ACCOUNT_ID     string
@@ -40,13 +33,7 @@ type Response struct {
 	Status string
 	Body   []byte
 }
-type APIAuthorization struct {
-	AccountID          string `json:"accountId"`
-	ApiURL             string `json:"apiUrl"`
-	AuthorizationToken string `json:"authorizationToken"`
-	DownloadURL        string `json:"downloadURL"`
-	MinimumPartSize    int    `json:"minimumPartSize"`
-}
+
 type Buckets struct {
 	Bucket []struct {
 		AccountID      string   `json:"accountId"`
@@ -75,28 +62,7 @@ type B2File struct {
 	FileName        string `json:"fileName"`
 	UploadTimestamp int64  `json:"uploadTimestamp"`
 }
-type TempPiece struct {
-	OrigFilePath       string
-	OrigFileName       string
-	PieceNum           int
-	SHA1               string
-	Size               int64
-	Path               string
-	URL                string
-	AuthorizationToken string
-	FileID             string
-	UploadStatus       string
-}
-type LargeFile struct {
-	Name                   string
-	SHA1                   string
-	Pieces                 int
-	OrigPath               string
-	Temp                   []TempPiece
-	LastModificationMillis int64
-	FileID                 string
-	Size                   int64
-}
+
 
 // Simple Error check for fatal errors
 func checkError(e error) {

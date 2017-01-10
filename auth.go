@@ -11,6 +11,21 @@ import (
 	"github.com/spf13/viper"
 	"github.com/uber-go/zap"
 )
+// Log
+// Log Level
+var logDebug = false
+var logger = zap.New(
+			zap.NewJSONEncoder(),
+			zap.DebugLevel,
+		)
+type APIAuthorization struct {
+	AccountID          string `json:"accountId"`
+	ApiURL             string `json:"apiUrl"`
+	AuthorizationToken string `json:"authorizationToken"`
+	DownloadURL        string `json:"downloadURL"`
+	MinimumPartSize    int    `json:"minimumPartSize"`
+}
+
 
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct
 func B2AuthorizeAccount() APIAuthorization {
@@ -22,8 +37,22 @@ func B2AuthorizeAccount() APIAuthorization {
 		logger.Fatal("No Configuration file found, Cannot Attempt Authorization with API.")
 	} else {
 		Config.ACCOUNT_ID = viper.GetString("Account1.ACCOUNT_ID")
+		logger.Debug("Obtained Account ID from Configuration file",
+			 zap.String("Account ID:",Config.ACCOUNT_ID),
+			 )
 		Config.APPLICATION_ID = viper.GetString("Account1.APPLICATION_ID")
+		logger.Debug("Obtained Account ID from Configuration file",
+			 zap.String("Application ID:",Config.APPLICATION_ID),
+			 )
 		Config.API_URL = viper.GetString("Account1.API_URL")
+		logger.Debug("Obtained Account ID from Configuration file",
+			 zap.String("API URL:",Config.API_URL),
+			 )
+	}
+	if Config.ACCOUNT_ID == "000" {
+		logger.Fatal("Account ID set to default. Update with your Account Id from Backblaze Settings.")
+	} else if Config.APPLICATION_ID == "000" {
+		logger.Fatal("Application ID set to default. Update with your Application Id from Backblaze Settings.")
 	}
 	// Encode credentials to base64
 	credentials := base64.StdEncoding.EncodeToString([]byte(Config.ACCOUNT_ID + ":" + Config.APPLICATION_ID))
@@ -31,6 +60,9 @@ func B2AuthorizeAccount() APIAuthorization {
 	// Request (POST https://api.backblazeb2.com/b2api/v1/b2_authorize_account)
 	jsonData := []byte(`{}`)
 	body := bytes.NewBuffer(jsonData)
+	logger.Debug("Preparing to send API Auth Request",
+		zap.String("Credentials Encoded:", credentials),
+	 )
 
 	// Create client
 	client := &http.Client{}
@@ -38,7 +70,7 @@ func B2AuthorizeAccount() APIAuthorization {
 	// Create request
 	req, err := http.NewRequest("POST", Config.API_URL+"b2_authorize_account", body)
 	if err != nil {
-		logger.Warn("Creating API Auth Request Failed.",
+		logger.Fatal("Creating API Auth Request Failed.",
 			zap.Error(err),
 		)
 	}
@@ -51,24 +83,29 @@ func B2AuthorizeAccount() APIAuthorization {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		logger.Warn("API Auth Request Failed.",
+		logger.Fatal("API Auth Request Failed.",
 			zap.Error(err),
 		)
 	}
 
+
 	var apiAuth APIAuthorization
 
-	if err == nil {
-		// Read Response Body
-		respBody, _ := ioutil.ReadAll(resp.Body)
-		defer resp.Body.Close()
-		err = json.Unmarshal(respBody, &apiAuth)
-		if err != nil {
-			fmt.Println("API Auth JSON Parse Failed", err)
-			logger.Fatal("Cannot parse API Auth Response JSON.",
-				zap.Error(err),
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	err = json.Unmarshal(respBody, &apiAuth)
+	if err != nil {
+		fmt.Println("API Auth JSON Parse Failed", err)
+		logger.Fatal("Cannot parse API Auth Response JSON.",
+			zap.Error(err),
+		)
+	}
+
+	if resp.Status != "200 OK" {
+		logger.Fatal("Authorization with Backblaze B2 API Failed",
+			zap.String("API Resp Body:", string(respBody)),
 			)
-		}
 	}
 
 	// Check API Response matches config
