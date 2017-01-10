@@ -1,2 +1,8 @@
 
 config/private-settings.toml
+
+.vscode/settings.json
+
+config/settings.toml
+
+config/settings.toml
