@@ -1,4 +1,5 @@
 package gopherb2
+
 // TODO: Read uploads from disk to reduce memory usage? optional?
 // TODO: Store Auth Info to reduce API requests, use old and re-auth if needed?
 // TODO: Check if existing file?
@@ -25,7 +26,7 @@ var logger = zap.New(
 	zap.NewJSONEncoder(),
 )
 
-func init()	{
+func init() {
 
 }
 
@@ -84,7 +85,7 @@ type TempPiece struct {
 	URL                string
 	AuthorizationToken string
 	FileID             string
-	UploadStatus			 string
+	UploadStatus       string
 }
 type LargeFile struct {
 	Name                   string

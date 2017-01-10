@@ -4,19 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/uber-go/zap"
 )
 
 // Creates new B2 bucket and returns API response
-func B2CreateBucket(bucketName string, bucketPublic bool)	{
+func B2CreateBucket(bucketName string, bucketPublic bool) {
 	//TODO: Check bucket name validity
 
-	if len(bucketName)< 6 {
+	if len(bucketName) < 6 {
 		logger.Fatal("Bucket Name must be at least 6 chars",
-			zap.String("Bucket Name too short",bucketName),
+			zap.String("Bucket Name too short", bucketName),
 		)
 	}
 
@@ -59,14 +59,13 @@ func B2CreateBucket(bucketName string, bucketPublic bool)	{
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
 	if apiResponse.Status == "200 OK" {
 		logger.Info("Create New Bucket Successful",
-			zap.String("Bucket Name:",bucketName),
+			zap.String("Bucket Name:", bucketName),
 		)
-	}	else {
+	} else {
 		logger.Panic("Could not create new Bucket",
-			zap.String("API Resp Body:",string(apiResponse.Body)),
+			zap.String("API Resp Body:", string(apiResponse.Body)),
 		)
 	}
-
 
 	return
 }

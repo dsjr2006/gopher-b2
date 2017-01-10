@@ -40,6 +40,7 @@ func TestToUploadFile(t *testing.T) {
 	fmt.Println(string(apiResponse.Body))
 	fmt.Println("\n^ Upload File Test Completed\n")
 }
+
 /*
 // Test B2StartLargeFile
 func TestToStartLargeFile(t *testing.T) {

@@ -1,22 +1,22 @@
 package gopherb2
 
 import (
-  "bytes"
-  "fmt"
-  "encoding/base64"
-  "net/http"
-  "io/ioutil"
-  "encoding/json"
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
-  "github.com/uber-go/zap"
-  "github.com/spf13/viper"
+	"github.com/spf13/viper"
+	"github.com/uber-go/zap"
 )
 
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct
 func B2AuthorizeAccount() APIAuthorization {
 	var Config Configuration
-	viper.SetConfigName("settings") // no need to include file extension
-	viper.AddConfigPath("../config")   // set the path of your config file
+	viper.SetConfigName("settings")  // no need to include file extension
+	viper.AddConfigPath("../config") // set the path of your config file
 	err := viper.ReadInConfig()
 	if err != nil {
 		logger.Fatal("No Configuration file found, Cannot Attempt Authorization with API.")
@@ -118,9 +118,9 @@ func B2GetUploadURL(bucketId string) UploadURL {
 
 	err = json.Unmarshal(apiResponse.Body, &uploadURL)
 	if err != nil {
-    logger.Fatal("Bucket JSON Parse Failed",
-      zap.Error(err),
-    )
+		logger.Fatal("Bucket JSON Parse Failed",
+			zap.Error(err),
+		)
 	}
 
 	return uploadURL
@@ -132,11 +132,11 @@ func B2FinishLargeFile(largeFile LargeFile) error {
 	// Create SHA1 array of completed files
 	var partSha1Array string
 	var buffer bytes.Buffer
-	for i:=0 ; i < len(largeFile.Temp) ; i++ {
+	for i := 0; i < len(largeFile.Temp); i++ {
 		buffer.WriteString("\u0022") // Add double quotation mark --> "
 		buffer.WriteString(largeFile.Temp[i].SHA1)
 		buffer.WriteString("\u0022")
-		if i != len(largeFile.Temp) - 1 {
+		if i != len(largeFile.Temp)-1 {
 			buffer.WriteString(",") // Only add trailing comma if item is not last
 		}
 	}
@@ -145,7 +145,7 @@ func B2FinishLargeFile(largeFile LargeFile) error {
 	// Create client
 	client := &http.Client{}
 	// Request Body : JSON object with fileID & array of SHA1 hashes of files transmitted
-	jsonBody := []byte(`{"fileId": "` + largeFile.FileID + `", "partSha1Array":[`+ partSha1Array +`]}`)
+	jsonBody := []byte(`{"fileId": "` + largeFile.FileID + `", "partSha1Array":[` + partSha1Array + `]}`)
 	body := bytes.NewBuffer(jsonBody)
 
 	// Create request
@@ -173,8 +173,8 @@ func B2FinishLargeFile(largeFile LargeFile) error {
 	}
 	if resp.Status == "200 OK" {
 		logger.Info("Finish Large File Upload Completed",
-			zap.String("Filepath",largeFile.OrigPath),
-			zap.String("B2 File ID",largeFile.FileID),
+			zap.String("Filepath", largeFile.OrigPath),
+			zap.String("B2 File ID", largeFile.FileID),
 		)
 	}
 

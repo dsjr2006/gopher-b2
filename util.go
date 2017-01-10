@@ -1,19 +1,19 @@
 package gopherb2
 
 import (
-  "crypto/sha1"
-  "encoding/hex"
-  "fmt"
-  "math"
-  "path/filepath"
-  "strconv"
-  "strings"
-  "os"
-  "io"
-  "io/ioutil"
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"math"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
-  "github.com/uber-go/zap"
-  "github.com/dsjr2006/blake2b-simd"
+	"github.com/dsjr2006/blake2b-simd"
+	"github.com/uber-go/zap"
 )
 
 func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
@@ -52,7 +52,7 @@ func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
 	)
 	undividedFile.Pieces = int(totalPartsNum)
 	if totalPartsNum > 10000 {
-		logger.Fatal("File cannot be split into more than 10000 pieces",)
+		logger.Fatal("File cannot be split into more than 10000 pieces")
 	}
 	// Process parts
 	for i := uint64(0); i < totalPartsNum; i++ {
@@ -60,7 +60,7 @@ func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
 		partBuffer := make([]byte, partSize)
 		file.Read(partBuffer)
 		// Add trailing number to filename before extension "filename_1.ext" then Write to Disk
-		tempFileName := "temp/" + strings.TrimSuffix(undividedFile.Name, fileExtension ) + "_" + strconv.FormatUint(i, 10) + fileExtension
+		tempFileName := "temp/" + strings.TrimSuffix(undividedFile.Name, fileExtension) + "_" + strconv.FormatUint(i, 10) + fileExtension
 		_, err := os.Create(tempFileName)
 		if err != nil {
 			fmt.Println(err)
@@ -71,29 +71,29 @@ func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
 		// Get Temp file hash
 		fileHash, err := fileSHA1(tempFileName)
 		logger.Info("Temp File Piece Created",
-			zap.Int("Piece #",int(i)),
-			zap.String("Piece Filename",tempFileName),
+			zap.Int("Piece #", int(i)),
+			zap.String("Piece Filename", tempFileName),
 			zap.String("Piece SHA1", fileHash),
 		)
 
 		uploadPartResponse := B2GetUploadPartURL(undividedFile.FileID)
 		if uploadPartResponse.FileID != undividedFile.FileID {
 			logger.Error("Upload Part File ID and Start File ID Do Not Match",
-				zap.String("Part File ID",uploadPartResponse.FileID),
+				zap.String("Part File ID", uploadPartResponse.FileID),
 				zap.String("Start File ID", undividedFile.FileID),
 			)
 		}
 		tempPiece := TempPiece{
-			OrigFilePath : undividedFile.OrigPath,
-			OrigFileName : undividedFile.Name,
-			PieceNum : int(i),
-			SHA1 : fileHash,
-			Size : int64(partSize),
-			Path : tempFileName,
-			URL : uploadPartResponse.UploadURL,
-			AuthorizationToken : uploadPartResponse.AuthorizationToken,
-			FileID : uploadPartResponse.FileID,
-			UploadStatus : "Not Started",
+			OrigFilePath:       undividedFile.OrigPath,
+			OrigFileName:       undividedFile.Name,
+			PieceNum:           int(i),
+			SHA1:               fileHash,
+			Size:               int64(partSize),
+			Path:               tempFileName,
+			URL:                uploadPartResponse.UploadURL,
+			AuthorizationToken: uploadPartResponse.AuthorizationToken,
+			FileID:             uploadPartResponse.FileID,
+			UploadStatus:       "Not Started",
 		}
 		undividedFile.Temp = append(undividedFile.Temp, tempPiece)
 	}
@@ -101,10 +101,10 @@ func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
 }
 
 func removeTempFiles(largeFile LargeFile) {
-	for i:=0 ; i < len(largeFile.Temp); i++ {
+	for i := 0; i < len(largeFile.Temp); i++ {
 		if largeFile.Temp[i].UploadStatus != "Success" {
 			logger.Error("Some temp files in large file were not uploaded",
-				zap.String("Large file name",largeFile.Name),
+				zap.String("Large file name", largeFile.Name),
 				zap.String("Piece Path", largeFile.Temp[i].Path),
 			)
 		}
@@ -112,7 +112,7 @@ func removeTempFiles(largeFile LargeFile) {
 			os.Remove(largeFile.Temp[i].Path) // If Upload was successful remove file
 			largeFile.Temp[i].UploadStatus = "Success - Deleted"
 			logger.Info("Temporary File Deleted",
-				zap.String("Large file name",largeFile.Name),
+				zap.String("Large file name", largeFile.Name),
 				zap.String("Piece Path", largeFile.Temp[i].Path),
 			)
 		}
@@ -144,7 +144,7 @@ func fileSHA1(filePath string) (string, error) {
 	return hex.EncodeToString(hashAsBytes), err
 }
 
-func fileBlake2b(filePath string) (string, error)	{
+func fileBlake2b(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	defer file.Close()
 	if err != nil {
@@ -154,16 +154,16 @@ func fileBlake2b(filePath string) (string, error)	{
 		return "fail", err
 	}
 
-		hash := blake2b.New512()
-		// Copy file to hash interface
-		if _, err := io.Copy(hash, file); err != nil {
-			logger.Warn("File Blake2b Hash Failure",
-				zap.Error(err),
-			)
-			return "fail", err
-		}
-		hashAsBytes := hash.Sum(nil)
-		return hex.EncodeToString(hashAsBytes), err
+	hash := blake2b.New512()
+	// Copy file to hash interface
+	if _, err := io.Copy(hash, file); err != nil {
+		logger.Warn("File Blake2b Hash Failure",
+			zap.Error(err),
+		)
+		return "fail", err
+	}
+	hashAsBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashAsBytes), err
 }
 
 func encodeFilename(filePath string) string {
