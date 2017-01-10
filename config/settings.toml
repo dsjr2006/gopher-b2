@@ -3,4 +3,4 @@
 [Account1]
   ACCOUNT_ID = "000"
   APPLICATION_ID = "000"
-  API_URL = "https://api.backblazeb2.com/b2api/v1/b2_authorize_account"
+  API_URL = "https://api.backblazeb2.com/b2api/v1/"
