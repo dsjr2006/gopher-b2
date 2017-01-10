@@ -53,7 +53,7 @@ func main() {
 			Usage:       "[global] upload [bucket id] [path or file]",
 			Description: "Upload File to BackBlaze B2",
 			Action: func(c *cli.Context) error {
-				gopherb2.B2UploadFile(c.Args().Get(0), c.Args().Get(1))
+				gopherb2.UploadFile(c.Args().Get(0), c.Args().Get(1))
 				return nil
 			},
 		},

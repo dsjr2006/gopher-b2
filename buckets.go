@@ -10,6 +10,18 @@ import (
 	"github.com/uber-go/zap"
 )
 
+type Buckets struct {
+	Bucket []Bucket `json:"buckets"`
+}
+type Bucket struct {
+	AccountID      string   `json:"accountId"`
+		BucketID       string   `json:"bucketId"`
+		BucketName     string   `json:"bucketName"`
+		BucketType     string   `json:"bucketType"`
+		LifecycleRules []string `json:"lifecycleRules"`
+		Revision       int      `json:"revision"`
+}
+
 // Creates new B2 bucket and returns API response
 func B2CreateBucket(bucketName string, bucketPublic bool) {
 	//TODO: Check bucket name validity
@@ -58,7 +70,7 @@ func B2CreateBucket(bucketName string, bucketPublic bool) {
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
 	if apiResponse.Status == "200 OK" {
-		logger.Info("Create New Bucket Successful",
+		logger.Debug("Create New Bucket Successful",
 			zap.String("Bucket Name:", bucketName),
 		)
 	} else {
@@ -66,6 +78,16 @@ func B2CreateBucket(bucketName string, bucketPublic bool) {
 			zap.String("API Resp Body:", string(apiResponse.Body)),
 		)
 	}
+	// Parse JSON 'Bucket' Response
+	var bucket Bucket
+	err = json.Unmarshal(apiResponse.Body, &bucket)
+	if err != nil {
+		fmt.Println("Bucket JSON Parse Failed", err)
+	}
+	logger.Info("New Bucket Created",
+		zap.String("Bucket Name:", bucketName),
+		zap.String("Bucket ID:", bucket.BucketID),
+	)
 
 	return
 }

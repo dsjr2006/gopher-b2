@@ -34,17 +34,6 @@ type Response struct {
 	Body   []byte
 }
 
-type Buckets struct {
-	Bucket []struct {
-		AccountID      string   `json:"accountId"`
-		BucketID       string   `json:"bucketId"`
-		BucketName     string   `json:"bucketName"`
-		BucketType     string   `json:"bucketType"`
-		LifecycleRules []string `json:"lifecycleRules"`
-		Revision       int      `json:"revision"`
-	} `json:"buckets"`
-}
-
 type UploadPartResponse struct {
 	AuthorizationToken string `json:"authorizationToken"`
 	FileID             string `json:"fileId"`
