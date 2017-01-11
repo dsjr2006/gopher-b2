@@ -237,7 +237,9 @@ func B2GetUploadPartURL(fileId string) UploadPartResponse {
 	resp, err := client.Do(req)
 
 	if err != nil {
-		fmt.Println("Failure : ", err)
+		logger.Fatal("Error requesting Part Upload URL",
+			zap.Error(err),
+		)
 	}
 
 	// Read Response Body
@@ -252,7 +254,7 @@ func B2GetUploadPartURL(fileId string) UploadPartResponse {
 		if err != nil {
 			logger.Fatal("Upload Part Response JSON Parse Failed", zap.Error(err))
 		}
-		logger.Info("Got Upload Part URL",
+		logger.Info("Obtained Upload Part URL",
 			zap.String("B2 File ID", uploadPartResponse.FileID),
 		)
 	}
