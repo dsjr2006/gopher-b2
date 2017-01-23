@@ -2,11 +2,11 @@ package main
 
 import (
 	"os"
+	"fmt"
 
 	"github.com/dsjr2006/gopherb2"
 	"github.com/urfave/cli"
 )
-
 
 func main() {
 	//var logTo string
@@ -14,7 +14,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "gopherb2"
 	app.Version = "0.1.0"
-	app.Description = "Application for managing Backblaze B2"
+	app.Description = "Application for managing and interacting with Backblaze B2"
 	app.Usage = "[global options] command [command options] [arguments...]"
 
 	app.Flags = []cli.Flag{
@@ -23,8 +23,8 @@ func main() {
 			Usage: "gopherb2 -log `gopher.log`",
 		},
 		cli.BoolFlag{
-			Name:			"debug,d",
-			Usage:			"`-debug|-d` [command]",
+			Name:  "debug,d",
+			Usage: "`-debug|-d` [command]",
 		},
 	}
 
@@ -45,6 +45,15 @@ func main() {
 						return nil
 					},
 				},
+				{
+					Name: "list",
+					Usage: "[global] bucket list",
+					Description: "List all Buckets in Account",
+					Action: func(c *cli.Context) error {
+						gopherb2.B2ListBuckets()
+						return nil
+					},
+			},
 			},
 		},
 		{
@@ -57,7 +66,35 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:		"file",
+			Aliases: []string{"files"},
+			Usage:	"[global] file [command] [arguments..]",
+			Description: "Manages B2 Files",
+			Subcommands: []cli.Command{
+				{
+					Name: "list",
+					Usage: "[global] file list [bucketId]",
+					Description: "List all files in given Bucket",
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name: "all",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						if !c.Bool("all") {
+							fmt.Println("Non-Working: List All Files in all buckets")
+						}
+
+						gopherb2.B2ListFilenames(c.Args().Get(0), "")
+						return nil
+					},
+				},
+			},
+		},
 	}
+
+	// B2ListBuckets()
 
 	app.Run(os.Args)
 }

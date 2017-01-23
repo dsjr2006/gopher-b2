@@ -15,11 +15,11 @@ type Buckets struct {
 }
 type Bucket struct {
 	AccountID      string   `json:"accountId"`
-		BucketID       string   `json:"bucketId"`
-		BucketName     string   `json:"bucketName"`
-		BucketType     string   `json:"bucketType"`
-		LifecycleRules []string `json:"lifecycleRules"`
-		Revision       int      `json:"revision"`
+	BucketID       string   `json:"bucketId"`
+	BucketName     string   `json:"bucketName"`
+	BucketType     string   `json:"bucketType"`
+	LifecycleRules []string `json:"lifecycleRules"`
+	Revision       int      `json:"revision"`
 }
 
 // Creates new B2 bucket and returns API response
@@ -93,7 +93,7 @@ func B2CreateBucket(bucketName string, bucketPublic bool) {
 }
 
 // Calls authorizeAccount then connects to API to request list of all B2 buckets and information, returns type 'Buckets'
-func B2ListBuckets() Buckets {
+func B2ListBuckets() {
 	// Authorize and Get API Token
 	authorizationResponse := B2AuthorizeAccount()
 
@@ -126,17 +126,20 @@ func B2ListBuckets() Buckets {
 
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
-
+	if resp.Status != "200 OK" {
+		logger.Fatal("Bucket List Request API Error",
+			zap.String("API Resp Status", resp.Status),
+			zap.String("API Resp Body", string(respBody)),
+		)
+	}
 	// Parse JSON 'Bucket' Response
 	var buckets Buckets
 	err = json.Unmarshal(apiResponse.Body, &buckets)
 	if err != nil {
 		fmt.Println("Bucket JSON Parse Failed", err)
 	}
-	/*
-		fmt.Println("Bucket 0: " + string(bucketList.Buckets[0]))
-		fmt.Printf("Buckets: %+v\n", buckets)
-		fmt.Println("Bucket 0 Name: " + (buckets.Bucket[0].BucketName))
-	*/
-	return buckets
+	for i := 0; i < len(buckets.Bucket); i++ {
+		fmt.Printf("\n Bucket Id: %s\n Bucket Name: %s\n Type: %s\n", buckets.Bucket[i].BucketID, buckets.Bucket[i].BucketName, buckets.Bucket[i].BucketType)
+	}
+	return
 }

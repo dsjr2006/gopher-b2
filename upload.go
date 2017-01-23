@@ -10,6 +10,7 @@ import (
 	"os"
 	"sync"
 
+	"gopkg.in/resty.v0"
 	"github.com/uber-go/zap"
 )
 
@@ -40,6 +41,21 @@ type UploadURL struct {
 	BucketId           string `json:"bucketId"`
 	URL                string `json:"uploadUrl"`
 }
+type uploadedFile struct {
+	AccountID     string `json:"accountId"`
+	Action        string `json:"action"`
+	BucketID      string `json:"bucketId"`
+	ContentLength int    `json:"contentLength"`
+	ContentSha1   string `json:"contentSha1"`
+	ContentType   string `json:"contentType"`
+	FileID        string `json:"fileId"`
+	FileInfo      struct {
+		ContentBlake2B        string `json:"content-blake2b"`
+		SrcLastModifiedMillis string `json:"src_last_modified_millis"`
+	} `json:"fileInfo"`
+	FileName        string `json:"fileName"`
+	UploadTimestamp int64  `json:"uploadTimestamp"`
+}
 
 // Upload single file to B2
 /*
@@ -54,83 +70,85 @@ func UploadFile(bucketId string, filePath string) {
 	// defer file.Close()
 	checkError(err)
 	/*
-	fileInfo, err := file.Stat()
-	checkError(err)
+		fileInfo, err := file.Stat()
+		checkError(err)
 	*/
 
-	if file.Size() < 104857600 {
-		B2UploadFile(bucketId, filePath)
+	if file.Size() < 120586240 {
+		b2UploadStdFile(bucketId, filePath)
 	} else {
 		B2LargeFileUpload(bucketId, filePath)
 	}
 
 	return
 }
-func B2UploadFile(bucketId string, filePath string) {
+func b2UploadStdFile(bucketId string, filePath string) {
 	// Authorize and Get Upload URL
 	uploadURL := B2GetUploadURL(bucketId)
 
 	file, err := os.Open(filePath)
-	defer file.Close()
-	checkError(err)
-	fileInfo, err := file.Stat()
-	checkError(err)
-
-	// Create client
-	client := &http.Client{}
-	// Request Body
-	buffer := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buffer, file); err != nil {
-		logger.Fatal("Error creating upload buffer",
+	if err != nil {
+		logger.Fatal("Error opening file for upload",
+			zap.String("File", filePath),
 			zap.Error(err),
 		)
 	}
-	checkError(err)
-	body := buffer
+	defer file.Close()
+	fileInfo, err := file.Stat()
+	if err != nil {
+		logger.Fatal("Error getting file stats",
+			zap.String("File", filePath),
+			zap.Error(err),
+		)
+	}
+	fileBytes, err := ioutil.ReadAll(file)
+
 	// Get File Modification Time as int64 value in milliseconds since midnight, January 1, 1970 UTC
 	fileModTimeMillis := fileInfo.ModTime().UnixNano() / 1000000
 
-	// Create request
-	req, err := http.NewRequest("POST", uploadURL.URL, body)
-	// TODO: Handle Request Error
-
 	// Get File Hash
-	fileHash, err := fileSHA1(filePath)
+	fsha1, err := fileSHA1(filePath)
 	fileBlake2b, err := fileBlake2b(filePath)
-	// TODO: Handle File Hash Return Error?
+	logger.Debug("File Hashing Complete.",
+		zap.String("Filename", fileInfo.Name()),
+		zap.String("SHA1", fsha1),
+		zap.String("Blake2b", fileBlake2b),
+	)
 
-	// Headers
-	req.Header.Add("Authorization", uploadURL.AuthorizationToken)
-	req.Header.Add("Content-Type", "b2/x-auto")
-	req.Header.Add("Content-Length", string(fileInfo.Size()))
-	req.Header.Add("X-Bz-Content-Sha1", fileHash)
-	req.Header.Add("X-Bz-File-Name", fileInfo.Name()) //Need to encode names properly! according to B2 docs
-	req.Header.Add("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", fileModTimeMillis))
-	req.Header.Add("X-Bz-Info-Content-Blake2b", fileBlake2b)
-	// Fetch Request
-	resp, err := client.Do(req)
-
+	// Create and Send Request
+	resp, err := resty.R().
+		SetHeader("Authorization", uploadURL.AuthorizationToken).
+		SetHeader("X-Bz-Content-Sha1", fsha1).
+		SetHeader("X-Bz-File-Name", fileInfo.Name()).
+		SetHeader("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", fileModTimeMillis)).
+		SetHeader("X-Bz-Info-Content-Blake2b", fileBlake2b).
+		SetBody(fileBytes).
+		SetContentLength(true).
+		Post(uploadURL.URL)
 	if err != nil {
-		logger.Warn("Upload Request Failed",
+		logger.Fatal("API Upload Request Error",
+			zap.String("File",filePath),
 			zap.Error(err),
 		)
 	}
+	if resp.Status() == "200 OK" {
+		var uploaded uploadedFile
+		err = json.Unmarshal(resp.Body(), &uploaded)
 
-	// Read Response Body
-	respBody, _ := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	var apiResponse Response
-	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
-	if apiResponse.Status == "200 OK" {
-		logger.Info("Upload File Sucessful",
-			zap.String("Filename:", filePath),
-		)
+		if uploaded.ContentSha1 != fsha1 {
+			logger.Fatal("API Response SHA1 Hash Mismatch.",
+				zap.String("Local SHA1", fsha1),
+				zap.String("API SHA1", uploaded.ContentSha1),
+			)
+		}
+
+		fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v", uploaded.FileName, uploaded.FileID)
 	} else {
 		logger.Panic("Could not upload file",
-			zap.String("API Resp Body:", string(apiResponse.Body)),
+			zap.String("API Resp Body", string(resp.Body())),
 		)
 	}
-	return
+	
 }
 
 func B2LargeFileUpload(bucketId string, filePath string) {
@@ -249,7 +267,19 @@ func B2StartLargeFile(bucketId string, filePath string) (Response, B2File) {
 
 	return apiResponse, b2File
 }
+func uploadParts(largeFile LargeFile) {
+	var wg sync.WaitGroup
+	logger.Info("Uploading File Part",
+		zap.String("File", largeFile.Name),
+	)
+	for i := 0; i < len(largeFile.Temp); i++ {
+		wg.Add(1)
+		go B2UploadPart(largeFile, i, &wg)
+	}
+	wg.Wait()
 
+	return
+}
 func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	logger.Info("Starting Upload of Part",
@@ -265,14 +295,13 @@ func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup) {
 
 	// TODO: Read Request Body from Disk for lower memory usage?
 	// Request Body
-	buffer := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buffer, file); err != nil {
+	body := bytes.NewBuffer(nil)
+	if _, err := io.Copy(body, file); err != nil {
 		logger.Fatal("Could not create part upload buffer",
 			zap.Error(err),
 		)
 	}
 	checkError(err)
-	body := buffer
 
 	// Create request
 	req, err := http.NewRequest("POST", largeFile.Temp[pieceNum].URL, body)
@@ -315,19 +344,6 @@ func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup) {
 		)
 		largeFile.Temp[pieceNum].UploadStatus = "Failed"
 	}
-
-	return
-}
-func uploadParts(largeFile LargeFile) {
-	var wg sync.WaitGroup
-	logger.Info("Uploading File Part",
-		zap.String("File", largeFile.Name),
-	)
-	for i := 0; i < len(largeFile.Temp); i++ {
-		wg.Add(1)
-		go B2UploadPart(largeFile, i, &wg)
-	}
-	wg.Wait()
 
 	return
 }

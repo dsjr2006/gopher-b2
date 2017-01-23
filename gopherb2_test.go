@@ -14,17 +14,23 @@ func TestToReturnAuthorization(t *testing.T) {
 
 // Test listBuckets
 func TestToReturnBucketList(t *testing.T) {
-	allBuckets := B2ListBuckets()
+	B2ListBuckets()
 	//fmt.Println("\nBuckets Response Body:\n" + string(apiResponse.Body))
-	fmt.Println("Bucket 0 Name: " + (allBuckets.Bucket[0].BucketName))
-	fmt.Println("\n^ List Buckets Test Completed\n")
+	fmt.Println("\n\n^ List Buckets Test Completed\n")
+}
+// Test B2ListFilenames
+func TestToReturnFilenames(t *testing.T) {
+	B2ListFilenames("b6ee61624837a6c6588b0715", "")
+
+	fmt.Println("\n\n^ List Filenames complete")
 }
 
-// Test createBucket
+/* Test createBucket
 func TestToCreateBucket(t *testing.T) {
 	B2CreateBucket("testbucket", false)
 	fmt.Println("\n^ Create Bucket Test Completed\n")
 }
+*/
 
 // Test getUploadURL
 func TestToReturnUploadURL(t *testing.T) {
@@ -35,9 +41,8 @@ func TestToReturnUploadURL(t *testing.T) {
 
 // Test uploadFile
 func TestToUploadFile(t *testing.T) {
-	apiResponse := B2UploadFile("b6ee61624837a6c6588b0715",
+	UploadFile("b6ee61624837a6c6588b0715",
 		"/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/testfile.txt")
-	fmt.Println(string(apiResponse.Body))
 	fmt.Println("\n^ Upload File Test Completed\n")
 }
 
@@ -57,7 +62,7 @@ func TestToGetUploadPartURL(t *testing.T) {
 	fmt.Println("\nUpload Part URL: " + apiResponse.UploadURL)
 	fmt.Println("\n^ Get Upload Part URL Test Completed (*Test FileID hardcoded)\n")
 }
-*/
+
 
 // Test B2LargeFileUpload
 func TestToUploadFile(t *testing.T) {
@@ -65,3 +70,4 @@ func TestToUploadFile(t *testing.T) {
 
 	fmt.Println("\n^ Upload Large File Test Completed\n")
 }
+*/
