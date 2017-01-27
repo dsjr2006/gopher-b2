@@ -9,9 +9,10 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
-	"gopkg.in/resty.v0"
 	"github.com/uber-go/zap"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 type LargeFile struct {
@@ -101,7 +102,6 @@ func b2UploadStdFile(bucketId string, filePath string) {
 			zap.Error(err),
 		)
 	}
-	fileBytes, err := ioutil.ReadAll(file)
 
 	// Get File Modification Time as int64 value in milliseconds since midnight, January 1, 1970 UTC
 	fileModTimeMillis := fileInfo.ModTime().UnixNano() / 1000000
@@ -115,25 +115,44 @@ func b2UploadStdFile(bucketId string, filePath string) {
 		zap.String("Blake2b", fileBlake2b),
 	)
 
+	// Create and Start Progress Bar
+	pbar := pb.New(int(fileInfo.Size())).SetUnits(pb.U_BYTES)
+	pbar.SetRefreshRate(time.Second)
+	pbar.ShowSpeed = true
+	pbar.ShowTimeLeft = true
+	pbar.Start()
+
 	// Create and Send Request
-	resp, err := resty.R().
-		SetHeader("Authorization", uploadURL.AuthorizationToken).
-		SetHeader("X-Bz-Content-Sha1", fsha1).
-		SetHeader("X-Bz-File-Name", fileInfo.Name()).
-		SetHeader("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", fileModTimeMillis)).
-		SetHeader("X-Bz-Info-Content-Blake2b", fileBlake2b).
-		SetBody(fileBytes).
-		SetContentLength(true).
-		Post(uploadURL.URL)
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", uploadURL.URL, pbar.NewProxyReader(file))
+	req.Header.Add("Authorization", uploadURL.AuthorizationToken)
+	req.Header.Add("Content-Length", string(fileInfo.Size()))
+	req.Header.Add("Content-Type", "b2/x-auto")
+	req.Header.Add("X-Bz-Content-Sha1", fsha1)
+	req.Header.Add("X-Bz-File-Name", fileInfo.Name())
+	req.Header.Add("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", fileModTimeMillis))
+	req.Header.Add("X-Bz-Info-Content-Blake2b", fileBlake2b)
 	if err != nil {
-		logger.Fatal("API Upload Request Error",
-			zap.String("File",filePath),
+		logger.Fatal("Error creating upload request",
 			zap.Error(err),
 		)
 	}
-	if resp.Status() == "200 OK" {
+	resp, err := client.Do(req)
+	if err != nil {
+		logger.Fatal("API Upload Request Error",
+			zap.String("File", filePath),
+			zap.Error(err),
+		)
+	}
+	pbar.Finish()
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+
+	// Check API Response
+	if resp.Status == "200 OK" {
 		var uploaded uploadedFile
-		err = json.Unmarshal(resp.Body(), &uploaded)
+		err = json.Unmarshal(respBody, &uploaded)
 
 		if uploaded.ContentSha1 != fsha1 {
 			logger.Fatal("API Response SHA1 Hash Mismatch.",
@@ -142,13 +161,19 @@ func b2UploadStdFile(bucketId string, filePath string) {
 			)
 		}
 
-		fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v", uploaded.FileName, uploaded.FileID)
+		fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v\n", uploaded.FileName, uploaded.FileID)
 	} else {
-		logger.Panic("Could not upload file",
-			zap.String("API Resp Body", string(resp.Body())),
+		fmt.Println("API Response")
+		for k, v := range resp.Header {
+			fmt.Printf("\n%v: %v", k, v)
+		}
+		fmt.Printf("\n%v", string(respBody))
+		logger.Fatal("Could not upload file",
+			zap.String("API Resp Body", string(respBody)),
 		)
+
 	}
-	
+
 }
 
 func B2LargeFileUpload(bucketId string, filePath string) {
