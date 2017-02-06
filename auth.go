@@ -82,6 +82,13 @@ func B2AuthorizeAccount() APIAuthorization {
 	req.Header.Add("Authorization", "Basic "+credentials)
 	req.Header.Add("Content-Type", "application/json; charset=utf-8")
 
+	// Troubleshooting
+	fmt.Println("Auth Request")
+	for k, v := range req.Header {
+		fmt.Printf("\n%v: %v", k, v)
+	}
+	fmt.Printf("\n%v", string(jsonData))
+
 	// Fetch Request
 	resp, err := client.Do(req)
 
@@ -90,6 +97,7 @@ func B2AuthorizeAccount() APIAuthorization {
 			zap.Error(err),
 		)
 	}
+	logger.Debug("Received API Authorization response.")
 
 	var apiAuth APIAuthorization
 
@@ -97,6 +105,14 @@ func B2AuthorizeAccount() APIAuthorization {
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	err = json.Unmarshal(respBody, &apiAuth)
+
+	//Troubleshooting
+	fmt.Println("Auth Response")
+	for k, v := range resp.Header {
+		fmt.Printf("\n%v: %v", k, v)
+	}
+	fmt.Printf("\n%v", string(respBody))
+
 	if err != nil {
 		fmt.Println("API Auth JSON Parse Failed", err)
 		logger.Fatal("Cannot parse API Auth Response JSON.",
@@ -117,6 +133,7 @@ func B2AuthorizeAccount() APIAuthorization {
 			zap.String("Config Acct ID", Config.ACCOUNT_ID),
 		)
 	}
+
 	return apiAuth
 }
 
@@ -140,6 +157,15 @@ func B2GetUploadURL(bucketId string) UploadURL {
 	req.Header.Add("Authorization", authorizationResponse.AuthorizationToken)
 	req.Header.Add("Content-Type", "application/json; charset=utf-8")
 
+	// Troubleshooting
+	fmt.Println("Upload URL Request")
+	for k, v := range req.Header {
+		fmt.Printf("\n%v: %v", k, v)
+	}
+	fmt.Printf("\n%v", string(jsonData))
+
+	logger.Debug("Preparing to send Get Upload URL request.")
+
 	// Fetch Request
 	resp, err := client.Do(req)
 
@@ -150,6 +176,14 @@ func B2GetUploadURL(bucketId string) UploadURL {
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
+
+	//Troubleshooting
+	fmt.Println("Upload URL Response")
+	for k, v := range resp.Header {
+		fmt.Printf("\n%v: %v", k, v)
+	}
+	fmt.Printf("\n%v", string(respBody))
+
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
 
@@ -161,6 +195,7 @@ func B2GetUploadURL(bucketId string) UploadURL {
 			zap.Error(err),
 		)
 	}
+	logger.Debug("Get Upload URL response received from API")
 
 	return uploadURL
 }

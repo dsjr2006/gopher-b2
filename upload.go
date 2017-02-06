@@ -126,7 +126,7 @@ func b2UploadStdFile(bucketId string, filePath string) {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", uploadURL.URL, pbar.NewProxyReader(file))
 	req.Header.Add("Authorization", uploadURL.AuthorizationToken)
-	req.Header.Add("Content-Length", string(fileInfo.Size()))
+	req.Header.Add("Content-Length", fmt.Sprintf("%v", fileInfo.Size()))
 	req.Header.Add("Content-Type", "b2/x-auto")
 	req.Header.Add("X-Bz-Content-Sha1", fsha1)
 	req.Header.Add("X-Bz-File-Name", fileInfo.Name())
@@ -136,6 +136,10 @@ func b2UploadStdFile(bucketId string, filePath string) {
 		logger.Fatal("Error creating upload request",
 			zap.Error(err),
 		)
+	}
+	fmt.Printf("\nURL: %v", uploadURL.URL)
+	for k, v := range req.Header {
+		fmt.Printf("\n%v: %v", k, v)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
