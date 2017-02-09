@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -308,15 +307,20 @@ func uploadParts(largeFile LargeFile) {
 	logger.Info("Uploading File Part",
 		zap.String("File", largeFile.Name),
 	)
+	pbpool, err := pb.StartPool()
+	if err != nil {
+		logger.Fatal("Could not start Progress Bar pool")
+	}
 	for i := 0; i < len(largeFile.Temp); i++ {
 		wg.Add(1)
-		go B2UploadPart(largeFile, i, &wg)
+		go B2UploadPart(largeFile, i, &wg, pbpool)
 	}
 	wg.Wait()
+	pbpool.Stop()
 
 	return
 }
-func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup) {
+func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup, pbpool *pb.Pool) {
 	defer wg.Done()
 	logger.Info("Starting Upload of Part",
 		zap.Int("B2 Part #", pieceNum+1),
@@ -331,22 +335,33 @@ func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup) {
 
 	// TODO: Read Request Body from Disk for lower memory usage?
 	// Request Body
-	body := bytes.NewBuffer(nil)
-	if _, err := io.Copy(body, file); err != nil {
+	//body := bytes.NewBuffer(nil)
+	/*if _, err := io.Copy(body, file); err != nil {
 		logger.Fatal("Could not create part upload buffer",
 			zap.Error(err),
 		)
-	}
+	}*/
 	checkError(err)
 
+	// Progress Bar
+	pbar := pb.New64(largeFile.Temp[pieceNum].Size).SetUnits(pb.U_BYTES)
+	pbar.SetRefreshRate(time.Second)
+	pbar.Prefix(fmt.Sprintf("Part %v of %v", pieceNum+1, len(largeFile.Temp)))
+	pbar.ShowSpeed = true
+	pbar.ShowTimeLeft = true
+
+	pbpool.Add(pbar)
+
 	// Create request
-	req, err := http.NewRequest("POST", largeFile.Temp[pieceNum].URL, body)
+	req, err := http.NewRequest("POST", largeFile.Temp[pieceNum].URL, pbar.NewProxyReader(file))
 
 	// Headers
-	req.Header.Add("Content-Length", string(largeFile.Temp[pieceNum].Size))
+	req.ContentLength = largeFile.Temp[pieceNum].Size
 	req.Header.Add("X-Bz-Part-Number", fmt.Sprintf("%d", (pieceNum+1))) // Temp files begin at 0, increase by 1 to match B2 response
 	req.Header.Add("Authorization", largeFile.Temp[pieceNum].AuthorizationToken)
 	req.Header.Add("X-Bz-Content-Sha1", largeFile.Temp[pieceNum].SHA1)
+
+	pbar.Start()
 
 	// Fetch Request
 	resp, err := client.Do(req)
@@ -354,6 +369,7 @@ func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup) {
 	if err != nil {
 		fmt.Println("Failure : ", err)
 	}
+	pbar.Finish()
 
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)

@@ -60,14 +60,16 @@ func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
 		partBuffer := make([]byte, partSize)
 		file.Read(partBuffer)
 		// Add trailing number to filename before extension "filename_1.ext" then Write to Disk
-		tempFileName := "temp/" + strings.TrimSuffix(undividedFile.Name, fileExtension) + "_" + strconv.FormatUint(i, 10) + fileExtension
+		tempFileName := os.TempDir() + strings.TrimSuffix(undividedFile.Name, fileExtension) + "_" + strconv.FormatUint(i, 10) + fileExtension
 		_, err := os.Create(tempFileName)
+		//tempFile, err := ioutil.TempFile("", tempFileName)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 		// write/save buffer to disk
 		ioutil.WriteFile(tempFileName, partBuffer, os.ModeAppend)
+		//tempFile.Write(partBuffer)
 		// Get Temp file hash
 		fileHash, err := fileSHA1(tempFileName)
 		logger.Info("Temp File Piece Created",
@@ -101,6 +103,7 @@ func createTempFiles(undividedFile LargeFile) (LargeFile, error) {
 }
 
 func removeTempFiles(largeFile LargeFile) {
+
 	for i := 0; i < len(largeFile.Temp); i++ {
 		if largeFile.Temp[i].UploadStatus != "Success" {
 			logger.Error("Some temp files in large file were not uploaded",
