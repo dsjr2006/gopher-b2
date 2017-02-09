@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"sync"
 	"time"
@@ -125,8 +126,8 @@ func b2UploadStdFile(bucketId string, filePath string) {
 	// Create and Send Request
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", uploadURL.URL, pbar.NewProxyReader(file))
+	req.ContentLength = fileInfo.Size()
 	req.Header.Add("Authorization", uploadURL.AuthorizationToken)
-	req.Header.Add("Content-Length", fmt.Sprintf("%v", fileInfo.Size()))
 	req.Header.Add("Content-Type", "b2/x-auto")
 	req.Header.Add("X-Bz-Content-Sha1", fsha1)
 	req.Header.Add("X-Bz-File-Name", fileInfo.Name())
@@ -137,10 +138,7 @@ func b2UploadStdFile(bucketId string, filePath string) {
 			zap.Error(err),
 		)
 	}
-	fmt.Printf("\nURL: %v", uploadURL.URL)
-	for k, v := range req.Header {
-		fmt.Printf("\n%v: %v", k, v)
-	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Fatal("API Upload Request Error",
@@ -167,14 +165,23 @@ func b2UploadStdFile(bucketId string, filePath string) {
 
 		fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v\n", uploaded.FileName, uploaded.FileID)
 	} else {
-		fmt.Println("API Response")
-		for k, v := range resp.Header {
-			fmt.Printf("\n%v: %v", k, v)
+		requestDump, err := httputil.DumpRequest(req, true)
+		if err != nil {
+			logger.Warn("Could not dump HTTP request",
+				zap.Error(err),
+			)
 		}
-		fmt.Printf("\n%v", string(respBody))
+		fmt.Printf("\nRequest: %v\n", string(requestDump))
 		logger.Fatal("Could not upload file",
 			zap.String("API Resp Body", string(respBody)),
 		)
+		responseDump, err := httputil.DumpResponse(resp, true)
+		if err != nil {
+			logger.Warn("Could not dump HTTP response",
+				zap.Error(err),
+			)
+		}
+		fmt.Printf("\nResponse: %v\n", string(responseDump))
 
 	}
 

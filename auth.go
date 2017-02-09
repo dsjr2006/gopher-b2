@@ -63,9 +63,7 @@ func B2AuthorizeAccount() APIAuthorization {
 	// Request (POST https://api.backblazeb2.com/b2api/v1/b2_authorize_account)
 	jsonData := []byte(`{}`)
 	body := bytes.NewBuffer(jsonData)
-	logger.Debug("Preparing to send API Auth Request",
-		zap.String("Credentials Encoded:", credentials),
-	)
+	logger.Debug("Preparing to send API Auth Request")
 
 	// Create client
 	client := &http.Client{}
@@ -81,13 +79,6 @@ func B2AuthorizeAccount() APIAuthorization {
 	// Headers
 	req.Header.Add("Authorization", "Basic "+credentials)
 	req.Header.Add("Content-Type", "application/json; charset=utf-8")
-
-	// Troubleshooting
-	fmt.Println("Auth Request")
-	for k, v := range req.Header {
-		fmt.Printf("\n%v: %v", k, v)
-	}
-	fmt.Printf("\n%v", string(jsonData))
 
 	// Fetch Request
 	resp, err := client.Do(req)
@@ -105,13 +96,6 @@ func B2AuthorizeAccount() APIAuthorization {
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	err = json.Unmarshal(respBody, &apiAuth)
-
-	//Troubleshooting
-	fmt.Println("Auth Response")
-	for k, v := range resp.Header {
-		fmt.Printf("\n%v: %v", k, v)
-	}
-	fmt.Printf("\n%v", string(respBody))
 
 	if err != nil {
 		fmt.Println("API Auth JSON Parse Failed", err)
@@ -157,13 +141,6 @@ func B2GetUploadURL(bucketId string) UploadURL {
 	req.Header.Add("Authorization", authorizationResponse.AuthorizationToken)
 	req.Header.Add("Content-Type", "application/json; charset=utf-8")
 
-	// Troubleshooting
-	fmt.Println("Upload URL Request")
-	for k, v := range req.Header {
-		fmt.Printf("\n%v: %v", k, v)
-	}
-	fmt.Printf("\n%v", string(jsonData))
-
 	logger.Debug("Preparing to send Get Upload URL request.")
 
 	// Fetch Request
@@ -176,13 +153,6 @@ func B2GetUploadURL(bucketId string) UploadURL {
 	// Read Response Body
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
-
-	//Troubleshooting
-	fmt.Println("Upload URL Response")
-	for k, v := range resp.Header {
-		fmt.Printf("\n%v: %v", k, v)
-	}
-	fmt.Printf("\n%v", string(respBody))
 
 	var apiResponse Response
 	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}

@@ -18,6 +18,7 @@ func TestToReturnBucketList(t *testing.T) {
 	//fmt.Println("\nBuckets Response Body:\n" + string(apiResponse.Body))
 	fmt.Println("\n\n^ List Buckets Test Completed\n")
 }
+
 // Test B2ListFilenames
 func TestToReturnFilenames(t *testing.T) {
 	B2ListFilenames("b6ee61624837a6c6588b0715", "")
@@ -35,7 +36,7 @@ func TestToCreateBucket(t *testing.T) {
 // Test getUploadURL
 func TestToReturnUploadURL(t *testing.T) {
 	uploadResponse := B2GetUploadURL("b6ee61624837a6c6588b0715")
-	fmt.Println(uploadResponse.URL)
+	fmt.Printf("\nUpload URL Received: %v", uploadResponse.URL)
 	fmt.Println("\n^ Get Upload URL Test Completed\n")
 }
 
