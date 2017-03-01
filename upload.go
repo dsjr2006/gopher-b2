@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/uber-go/zap"
 	pb "gopkg.in/cheggaaa/pb.v1"
 )
@@ -42,7 +43,7 @@ type UploadURL struct {
 	BucketId           string `json:"bucketId"`
 	URL                string `json:"uploadUrl"`
 }
-type uploadedFile struct {
+type UploadedFile struct {
 	AccountID     string `json:"accountId"`
 	Action        string `json:"action"`
 	BucketID      string `json:"bucketId"`
@@ -58,34 +59,32 @@ type uploadedFile struct {
 	UploadTimestamp int64  `json:"uploadTimestamp"`
 }
 
-// Upload single file to B2
-/*
-TODO: Check SHA1 match after upload
-TODO: Verbose errors
-TODO: Info Log
-*/
-func UploadFile(bucketId string, filePath string) {
+// UploadFile transmits file at given path to B2 Storage
+func UploadFile(bucketID string, filePath string) {
 	// Determine Upload Method
 	file, err := os.Stat(filePath)
 
 	// defer file.Close()
-	checkError(err)
-	/*
-		fileInfo, err := file.Stat()
-		checkError(err)
-	*/
+	if err != nil {
+		logger.Fatal("Unable to get file stats.",
+			zap.Error(err),
+		)
+		log.Fatalf("Unable to get file stats. Error: %v", err)
+	}
 
 	if file.Size() < 120586240 {
-		b2UploadStdFile(bucketId, filePath)
+		log.Debug("Sending file to Standard upload.")
+		b2UploadStdFile(bucketID, filePath)
 	} else {
-		B2LargeFileUpload(bucketId, filePath)
+		log.Debug("Sending file to Large upload")
+		B2LargeFileUpload(bucketID, filePath)
 	}
 
 	return
 }
-func b2UploadStdFile(bucketId string, filePath string) {
+func b2UploadStdFile(bucketID string, filePath string) {
 	// Authorize and Get Upload URL
-	uploadURL := B2GetUploadURL(bucketId)
+	uploadURL := B2GetUploadURL(bucketID)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -152,7 +151,7 @@ func b2UploadStdFile(bucketId string, filePath string) {
 
 	// Check API Response
 	if resp.Status == "200 OK" {
-		var uploaded uploadedFile
+		var uploaded UploadedFile
 		err = json.Unmarshal(respBody, &uploaded)
 
 		if uploaded.ContentSha1 != fsha1 {
@@ -186,7 +185,7 @@ func b2UploadStdFile(bucketId string, filePath string) {
 
 }
 
-func B2LargeFileUpload(bucketId string, filePath string) {
+func B2LargeFileUpload(bucketID string, filePath string) {
 	// Open File and Get File Stats
 	file, err := os.Open(filePath)
 	defer file.Close()
@@ -195,7 +194,7 @@ func B2LargeFileUpload(bucketId string, filePath string) {
 	// TODO: Check file stat error
 
 	// Send start request to API and check response
-	startResp, b2File := B2StartLargeFile(bucketId, filePath)
+	startResp, b2File := B2StartLargeFile(bucketID, filePath)
 	if startResp.Status != "200 OK" {
 		logger.Warn("Invalid response to start large file request",
 			zap.String("Response", string(startResp.Body)),
@@ -245,16 +244,20 @@ func B2LargeFileUpload(bucketId string, filePath string) {
 }
 
 // Begin Large File Upload
-func B2StartLargeFile(bucketId string, filePath string) (Response, B2File) {
+func B2StartLargeFile(bucketID string, filePath string) (Response, B2File) {
 	// Authorize
 	apiAuth := B2AuthorizeAccount()
 
 	// Open File and Get File Stats
 	file, err := os.Open(filePath)
 	defer file.Close()
-	checkError(err)
+	if err != nil {
+		log.Fatalf("Unable to open file. Error: %v", err)
+	}
 	fileInfo, err := file.Stat()
-	checkError(err)
+	if err != nil {
+		log.Fatalf("Unable to get file stats. Error: %v", err)
+	}
 	// Get File Modification Time as int64 value in milliseconds since midnight, January 1, 1970 UTC
 	fileModTimeMillis := fileInfo.ModTime().UnixNano() / 1000000
 	// Get File sha1
@@ -266,7 +269,7 @@ func B2StartLargeFile(bucketId string, filePath string) (Response, B2File) {
 	// Create client
 	client := &http.Client{}
 	// Request Body : JSON object
-	jsonBody := []byte(`{"fileInfo": {"large_file_sha1": "` + largeFileSHA1 + `","src_last_modified_millis": "` + fmt.Sprintf("%d", fileModTimeMillis) + `"},"bucketId": "` + bucketId + `","fileName": "` + fileInfo.Name() + `","contentType": "b2/x-auto"}`)
+	jsonBody := []byte(`{"fileInfo": {"large_file_sha1": "` + largeFileSHA1 + `","src_last_modified_millis": "` + fmt.Sprintf("%d", fileModTimeMillis) + `"},"bucketId": "` + bucketID + `","fileName": "` + fileInfo.Name() + `","contentType": "b2/x-auto"}`)
 	body := bytes.NewBuffer(jsonBody)
 
 	// Create request
@@ -328,20 +331,13 @@ func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup, pbpool 
 		zap.String("Upload URL", largeFile.Temp[pieceNum].URL),
 	)
 	file, err := os.Open(largeFile.Temp[pieceNum].Path)
+	if err != nil {
+		log.Fatalf("Unable to open file. Error: %v", err)
+	}
 	defer file.Close()
 	// Upload Part (POST https://pod-000-1004-12.backblaze.com/b2api/v1/b2_upload_part/....)
 	// Create client
 	client := &http.Client{}
-
-	// TODO: Read Request Body from Disk for lower memory usage?
-	// Request Body
-	//body := bytes.NewBuffer(nil)
-	/*if _, err := io.Copy(body, file); err != nil {
-		logger.Fatal("Could not create part upload buffer",
-			zap.Error(err),
-		)
-	}*/
-	checkError(err)
 
 	// Progress Bar
 	pbar := pb.New64(largeFile.Temp[pieceNum].Size).SetUnits(pb.U_BYTES)

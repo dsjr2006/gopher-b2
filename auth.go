@@ -12,14 +12,6 @@ import (
 	"github.com/uber-go/zap"
 )
 
-// Log
-// Log Level
-var logDebug = false
-var logger = zap.New(
-	zap.NewJSONEncoder(),
-	zap.DebugLevel,
-)
-
 type APIAuthorization struct {
 	AccountID          string `json:"accountId"`
 	ApiURL             string `json:"apiUrl"`
@@ -61,8 +53,7 @@ func B2AuthorizeAccount() APIAuthorization {
 	credentials := base64.StdEncoding.EncodeToString([]byte(Config.ACCOUNT_ID + ":" + Config.APPLICATION_ID))
 
 	// Request (POST https://api.backblazeb2.com/b2api/v1/b2_authorize_account)
-	jsonData := []byte(`{}`)
-	body := bytes.NewBuffer(jsonData)
+	body := bytes.NewBuffer([]byte(`{}`))
 	logger.Debug("Preparing to send API Auth Request")
 
 	// Create client

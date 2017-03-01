@@ -172,9 +172,17 @@ func fileBlake2b(filePath string) (string, error) {
 func encodeFilename(filePath string) string {
 	file, err := os.Open(filePath)
 	defer file.Close()
-	checkError(err)
+	if err != nil {
+		logger.Fatal("Could not open file for filename encoding.",
+			zap.Error(err),
+		)
+	}
 	fileInfo, err := file.Stat()
-	checkError(err)
+	if err != nil {
+		logger.Fatal("Unable to get file stats.",
+			zap.Error(err),
+		)
+	}
 	encodedFilename := string(fileInfo.Name())
 	fmt.Println(encodedFilename)
 	return encodedFilename

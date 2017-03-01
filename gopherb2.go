@@ -17,11 +17,19 @@ package gopherb2
 // TODO: Encrypt files before upload
 import (
 	"net/http"
+	"os"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/uber-go/zap"
 )
 
-
+// Log
+// Log Level
+var (
+	LogDebug bool
+	logger   = logLevel()
+	LogDest  = ""
+)
 
 type Configuration struct {
 	ACCOUNT_ID     string
@@ -52,13 +60,28 @@ type B2File struct {
 	UploadTimestamp int64  `json:"uploadTimestamp"`
 }
 
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.JSONFormatter{})
 
-// Simple Error check for fatal errors
-func checkError(e error) {
-	if e != nil {
-		logger.Fatal("checkError failed",
-			zap.Error(e),
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+
+	// Only log the warning severity or above.
+	log.SetLevel(log.WarnLevel)
+}
+
+func logLevel() zap.Logger {
+	if LogDebug == true {
+		return zap.New(
+			zap.NewJSONEncoder(),
+			zap.DebugLevel,
 		)
-		panic(e)
 	}
+
+	return zap.New(
+		zap.NewJSONEncoder(),
+		zap.InfoLevel,
+	)
 }

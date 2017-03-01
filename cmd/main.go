@@ -1,15 +1,39 @@
 package main
 
 import (
-	"os"
 	"fmt"
+	"io/ioutil"
+	"os"
+
+	log "github.com/Sirupsen/logrus"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/dsjr2006/gopherb2"
 	"github.com/urfave/cli"
 )
 
+var (
+	logDest string
+	debug   bool
+	logFile = "stderr"
+)
+
 func main() {
-	//var logTo string
+	switch logDest {
+	case "stdout":
+		log.SetOutput(os.Stdout)
+	case "stderr":
+		log.SetOutput(os.Stderr)
+	case "":
+		log.SetOutput(ioutil.Discard)
+	default:
+		log.SetOutput(&lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    100,
+			MaxAge:     90,
+			MaxBackups: 10,
+		})
+	}
 
 	app := cli.NewApp()
 	app.Name = "gopherb2"
@@ -19,12 +43,14 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "log",
-			Usage: "gopherb2 -log `gopher.log`",
+			Name:        "log",
+			Usage:       "gopherb2 -log `gopher.log`",
+			Destination: &logDest,
 		},
 		cli.BoolFlag{
-			Name:  "debug,d",
-			Usage: "`-debug|-d` [command]",
+			Name:        "debug,d",
+			Usage:       "`-debug|-d` [command]",
+			Destination: &debug,
 		},
 	}
 
@@ -41,19 +67,20 @@ func main() {
 					Usage:       "[global] bucket create [name of new bucket]",
 					Description: "Creates New Backblaze B2 Bucket",
 					Action: func(c *cli.Context) error {
+						checkDebug()
 						gopherb2.B2CreateBucket(c.Args().Get(0), false)
 						return nil
 					},
 				},
 				{
-					Name: "list",
-					Usage: "[global] bucket list",
+					Name:        "list",
+					Usage:       "[global] bucket list",
 					Description: "List all Buckets in Account",
 					Action: func(c *cli.Context) error {
 						gopherb2.B2ListBuckets()
 						return nil
 					},
-			},
+				},
 			},
 		},
 		{
@@ -62,19 +89,20 @@ func main() {
 			Usage:       "[global] upload [bucket id] [path or file]",
 			Description: "Upload File to BackBlaze B2",
 			Action: func(c *cli.Context) error {
+				checkDebug()
 				gopherb2.UploadFile(c.Args().Get(0), c.Args().Get(1))
 				return nil
 			},
 		},
 		{
-			Name:		"file",
-			Aliases: []string{"files"},
-			Usage:	"[global] file [command] [arguments..]",
+			Name:        "file",
+			Aliases:     []string{"files"},
+			Usage:       "[global] file [command] [arguments..]",
 			Description: "Manages B2 Files",
 			Subcommands: []cli.Command{
 				{
-					Name: "list",
-					Usage: "[global] file list [bucketId]",
+					Name:        "list",
+					Usage:       "[global] file list [bucketId]",
 					Description: "List all files in given Bucket",
 					Flags: []cli.Flag{
 						cli.BoolFlag{
@@ -97,4 +125,11 @@ func main() {
 	// B2ListBuckets()
 
 	app.Run(os.Args)
+}
+
+func checkDebug() {
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	}
+	return
 }
