@@ -29,6 +29,7 @@ var (
 	LogDebug bool
 	logger   = logLevel()
 	LogDest  = ""
+	Logger   = log.New()
 )
 
 type Configuration struct {
@@ -66,7 +67,7 @@ func init() {
 
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
-	log.SetOutput(os.Stdout)
+	log.SetOutput(os.Stderr)
 
 	// Only log the warning severity or above.
 	log.SetLevel(log.WarnLevel)
@@ -84,4 +85,15 @@ func logLevel() zap.Logger {
 		zap.NewJSONEncoder(),
 		zap.InfoLevel,
 	)
+}
+func SetLogLevel(lvl string) error {
+	switch lvl {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	default:
+		log.SetLevel(log.WarnLevel)
+	}
+	return nil
 }

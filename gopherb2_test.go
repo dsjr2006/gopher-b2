@@ -5,6 +5,35 @@ import (
 	"testing"
 )
 
+// TestToReturnNewB2File does that
+func TestToReturnNewB2File(t *testing.T) {
+	b2F, err := NewB2File("/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/testfile.txt")
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return
+	}
+	for i := 0; i < len(b2F.Piece); i++ {
+		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v Blake2b: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1, b2F.Piece[i].Blake2b)
+	}
+
+	return
+}
+
+// TestToReturnNewLargeB2File
+func TestToReturnNewLargeB2File(t *testing.T) {
+	b2F, err := NewB2File("/Users/dsjr2006/Downloads/LibreOffice_5.3.0_MacOS_x86-64.dmg")
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return
+	}
+
+	for i := 0; i < len(b2F.Piece); i++ {
+		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v Blake2b: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1, b2F.Piece[i].Blake2b)
+	}
+
+	return
+}
+
 // Test authorizeAccount
 func TestToReturnAuthorization(t *testing.T) {
 	apiResponse := B2AuthorizeAccount()

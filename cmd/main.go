@@ -129,7 +129,8 @@ func main() {
 
 func checkDebug() {
 	if debug {
-		log.SetLevel(log.DebugLevel)
+		fmt.Println("debug on")
+		gopherb2.SetLogLevel("debug")
 	}
 	return
 }
