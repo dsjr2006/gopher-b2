@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"time"
 
@@ -94,7 +95,7 @@ func NewB2File(path string) (UpToB2File, error) {
 	return b2F, nil
 }
 
-// Process runs functions to get necessary file hashes
+// Process runs functions to get necessary file hashes, currently run at end of NewB2File
 func (b2F *UpToB2File) Process() error {
 	err := b2F.getPieceSHA1s()
 	if err != nil {
@@ -114,11 +115,13 @@ func (b2F *UpToB2File) Process() error {
 	fmt.Printf("\nTotal Size: %v", b2F.getTotalSize())
 	return nil
 }
-func (b2F *UpToB2File) Upload(bucketId string) error {
+
+// Upload transmits file(s) to Backblaze B2
+func (b2F *UpToB2File) Upload(bucketID string) error {
 	// Standard Upload if one piece
 	if len(b2F.Piece) == 1 {
 		fmt.Println("Starting Standard upload")
-		uploadURL := B2GetUploadURL(bucketId)
+		uploadURL := B2GetUploadURL(bucketID)
 		file, err := os.Open(b2F.Filepath)
 		if err != nil {
 			//TODO: handle error
@@ -162,8 +165,25 @@ func (b2F *UpToB2File) Upload(bucketId string) error {
 			}
 
 			fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v\n", uploaded.FileName, uploaded.FileID)
+
+			return nil
 		}
-		return nil
+		if resp.Status != "200 OK" {
+			requestDump, err := httputil.DumpRequest(req, true)
+			if err != nil {
+				log.Fatal("Could not dump HTTP request")
+			}
+			fmt.Printf("\nRequest: %v\n", string(requestDump))
+
+			responseDump, err := httputil.DumpResponse(resp, true)
+			if err != nil {
+				log.Fatal("Could not dump HTTP response")
+			}
+			fmt.Printf("\nResponse: %v\n", string(responseDump))
+
+			return errors.New("could not complete upload, please see log and retry")
+
+		}
 	}
 	// Multi-part Upload if greather than one piece
 	fmt.Println("Starting multi-part upload")
