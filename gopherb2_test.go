@@ -13,9 +13,29 @@ func TestToReturnNewB2File(t *testing.T) {
 		return
 	}
 	for i := 0; i < len(b2F.Piece); i++ {
-		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v Blake2b: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1, b2F.Piece[i].Blake2b)
+		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1)
 	}
+	fmt.Printf("\nFile Blake2b: %v", b2F.Blake2b)
+	fmt.Println("\n^ New B2 File Test Completed\n")
+	return
+}
 
+// TestToReturnNewB2File does that
+func TestToUploadNewStandardB2File(t *testing.T) {
+	b2F, err := NewB2File("/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/testfile.txt")
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return
+	}
+	for i := 0; i < len(b2F.Piece); i++ {
+		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1)
+	}
+	err = b2F.Upload("b6ee61624837a6c6588b0715")
+	if err != nil {
+		fmt.Printf("Could not upload file. Error: %v", err)
+	}
+	fmt.Printf("\nFile Blake2b: %v", b2F.Blake2b)
+	fmt.Println("\n^ Standard B2 File Upload Test Completed\n")
 	return
 }
 
@@ -28,9 +48,10 @@ func TestToReturnNewLargeB2File(t *testing.T) {
 	}
 
 	for i := 0; i < len(b2F.Piece); i++ {
-		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v Blake2b: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1, b2F.Piece[i].Blake2b)
+		fmt.Printf("\nFile Piece %v- Size: %v - SHA1: %v", i, b2F.Piece[i].Size, b2F.Piece[i].SHA1)
 	}
-
+	fmt.Printf("\nFile Blake2b: %v", b2F.Blake2b)
+	fmt.Println("\n^ New Large B2 File Test Completed\n")
 	return
 }
 
