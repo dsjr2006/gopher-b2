@@ -26,6 +26,7 @@ var UploadConcurrency = 5
 type UpToB2File struct {
 	Filepath      string
 	Filename      string
+	FileID        string
 	LastModMillis int64
 	PieceSize     int64
 	TotalSize     int64
@@ -35,6 +36,7 @@ type UpToB2File struct {
 }
 type B2FilePiece struct {
 	PieceNum int
+	Data     []byte
 	SHA1     string
 	Size     int64
 	Status   string
@@ -192,6 +194,14 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 		}
 	}
 	// Multi-part Upload if greather than one piece
+
+	// TODO: Multi-part upload simulataneous without creating temp files, need to evaluate performance
+	// impact of reading multiple part from same file concurrently rather than concurrently reading from
+	// seperate files. Brief web searches seem to suggest reading multiple segments of same file in parallels
+	// will degrade IO performance, suggest reading from temp files. This will require user to have as much
+	// space as large file uses available for creating temp files. Minimize by only creating chunks as it goes
+	// and delete as uploads confirmed?
+
 	fmt.Println("Starting multi-part upload")
 	file, err := os.Open(b2F.Filepath)
 	if err != nil {
@@ -203,7 +213,8 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 	if err != nil {
 		log.Fatal("Start large file failed", err)
 	}
-	fmt.Printf("%v", b2StartLgFile) // TODO: Remove this
+	fmt.Printf("Start large file:\n%v", b2StartLgFile) // TODO: Remove this
+	b2F.FileID = b2StartLgFile.FileID
 	// create progress bar pool
 	pbpool, err := pb.StartPool()
 	if err != nil {
@@ -214,6 +225,14 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 	go func() {
 		for i := 0; i < len(b2F.Piece); i++ {
 			filePieces <- b2F.Piece[i]
+			// Create byte array and fill buffer from file
+			part := make([]byte, b2F.Piece[i].Size)
+			_, err := file.Read(part)
+			if err != nil {
+				log.Fatal("Could not read file into buffer for multi-part upload")
+			}
+			fmt.Printf("read to part %v", len(part))
+			b2F.Piece[i].Data = append(b2F.Piece[i].Data, part...)
 		}
 		close(filePieces)
 	}()
@@ -232,6 +251,9 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 			defer wg.Done()
 
 			for p := range filePieces {
+
+				// Upload Temp Pieces here
+
 				// Progress Bar
 				pbar := pb.New64(p.Size).SetUnits(pb.U_BYTES)
 				pbar.SetRefreshRate(time.Second)
@@ -241,9 +263,44 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 				pbpool.Add(pbar)
 
 				// Get Upload Part URL & AuthorizationToken
-				time.Sleep(time.Second)
+				uploadPtResp := B2GetUploadPartURL(b2F.FileID)
 				// Attempt Upload
-				time.Sleep(10 * time.Second)
+				// Create client, body, & request
+				client := &http.Client{}
+				buf := new(bytes.Buffer)
+				buf.Write(p.Data)
+				fmt.Printf("p.Data size: %v", len(p.Data))
+				body := pbar.NewProxyReader(buf)
+				req, err := http.NewRequest("POST", uploadPtResp.UploadURL, body)
+				if err != nil {
+					log.Fatal("Error creating multi-part upload request")
+				}
+				// Headers
+				req.ContentLength = p.Size
+				req.Header.Add("X-Bz-Part-Number", fmt.Sprintf("%d", (p.PieceNum+1))) // Temp files begin at 0, increase by 1 to match B2 response
+				req.Header.Add("Authorization", uploadPtResp.AuthorizationToken)
+				req.Header.Add("X-Bz-Content-Sha1", p.SHA1)
+
+				// Fetch Request
+				pbar.Start()
+				resp, err := client.Do(req)
+				if err != nil {
+					fmt.Println("Failure : ", err)
+				}
+				// Read Response Body
+				pbar.Finish()
+				respBody, _ := ioutil.ReadAll(resp.Body)
+				var apiResponse Response
+				apiResponse.Header = resp.Header
+				apiResponse.Status = resp.Status
+				apiResponse.Body = respBody
+				if apiResponse.Status == "200 OK" {
+					p.Status = "Success"
+				}
+				if apiResponse.Status != "200 OK" {
+					p.Status = "Failed"
+				}
+
 				fmt.Printf("Thread #%v Piece ID: %v Size: %v SHA1: %v\n", id, p.PieceNum, p.Size, p.SHA1)
 
 				results <- "done"

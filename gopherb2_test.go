@@ -41,7 +41,8 @@ func TestToUploadNewStandardB2File(t *testing.T) {
 
 // TestToReturnNewLargeB2File
 func TestToReturnNewLargeB2File(t *testing.T) {
-	b2F, err := NewB2File("/Users/dsjr2006/Downloads/megan@allaboutent.com.zip")
+	//b2F, err := NewB2File("/Users/dsjr2006/Downloads/megan@allaboutent.com.zip") // ~ 3GB
+	b2F, err := NewB2File("/Users/dsjr2006/Downloads/LibreOffice_5.3.0_MacOS_x86-64.dmg") // ~ 250MB
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 		return
