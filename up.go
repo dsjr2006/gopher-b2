@@ -7,20 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"sync"
 	"time"
 
-	blake2b "github.com/dsjr2006/blake2b-simd"
 	pb "gopkg.in/cheggaaa/pb.v1"
-)
 
-// UploadConcurrency controls the number of simulataneous upload tasks of a multi-part upload
-var UploadConcurrency = 5
+	"log"
+
+	blake2b "github.com/dsjr2006/blake2b-simd"
+)
 
 type UpToB2File struct {
 	Filepath      string
@@ -33,10 +31,9 @@ type UpToB2File struct {
 	Piece         []B2FilePiece // For B2 Large File - First Piece [0] will have Size/Hashes/Status
 }
 type B2FilePiece struct {
-	PieceNum int
-	SHA1     string
-	Size     int64
-	Status   string
+	SHA1   string
+	Size   int64
+	Status string
 }
 
 func NewB2File(path string) (UpToB2File, error) {
@@ -83,9 +80,8 @@ func NewB2File(path string) (UpToB2File, error) {
 		fmt.Printf("\nPiece size: %v", pieceSize)
 
 		piece := B2FilePiece{
-			Status:   "Unprocessed",
-			Size:     pieceSize,
-			PieceNum: i,
+			Status: "Unprocessed",
+			Size:   pieceSize,
 		}
 		totalSize -= b2F.PieceSize
 		fmt.Printf("\nUpdating Status of Piece# %v", i+1)
@@ -168,7 +164,6 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 				log.Fatal("API Response SHA1 Hash Mismatch.")
 			}
 
-			b2F.Piece[0].Status = "Upload Success"
 			fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v\n", uploaded.FileName, uploaded.FileID)
 
 			return nil
@@ -192,40 +187,6 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 	}
 	// Multi-part Upload if greather than one piece
 	fmt.Println("Starting multi-part upload")
-
-	// create task channel
-	filePieces := make(chan B2FilePiece)
-	go func() {
-		for i := 0; i < len(b2F.Piece); i++ {
-			filePieces <- b2F.Piece[i]
-		}
-		close(filePieces)
-	}()
-
-	// waitgroup, and close results channel when done
-	results := make(chan string)
-	var wg sync.WaitGroup
-	wg.Add(UploadConcurrency)
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for i := 0; i < UploadConcurrency; i++ {
-		go func(id int) {
-			defer wg.Done()
-
-			for p := range filePieces {
-				fmt.Printf("Thread #%v Piece ID: %v Size: %v SHA1: %v\n", id, p.PieceNum, p.Size, p.SHA1)
-				results <- "done"
-			}
-		}(i)
-	}
-
-	// loop over results until closed (see above)
-	for r := range results {
-		fmt.Printf("%v\n", r)
-	}
 
 	return nil
 }
@@ -282,7 +243,7 @@ func (b2F *UpToB2File) getSHA1() error {
 		return err
 	}
 	if int64(ptSz) != b2F.TotalSize {
-		//return errors.New("File Size read into buffer does not match file total size")
+		return errors.New("File Size read into buffer does not match file total size")
 	}
 
 	hash := sha1.New()
