@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"sync"
 	"time"
@@ -83,105 +82,16 @@ func UploadFile(bucketID string, filePath string) {
 	return
 }
 func b2UploadStdFile(bucketID string, filePath string) {
-	// Authorize and Get Upload URL
-	uploadURL := B2GetUploadURL(bucketID)
-
-	file, err := os.Open(filePath)
+	b2F, err := NewB2File(filePath)
 	if err != nil {
-		logger.Fatal("Error opening file for upload",
-			zap.String("File", filePath),
-			zap.Error(err),
-		)
+		log.Fatal("New B2 File Failure. ", err)
+		return
 	}
-	defer file.Close()
-	fileInfo, err := file.Stat()
+	err = b2F.Upload(bucketID)
 	if err != nil {
-		logger.Fatal("Error getting file stats",
-			zap.String("File", filePath),
-			zap.Error(err),
-		)
+		log.Fatal("Could not upload file", err)
 	}
-
-	// Get File Modification Time as int64 value in milliseconds since midnight, January 1, 1970 UTC
-	fileModTimeMillis := fileInfo.ModTime().UnixNano() / 1000000
-
-	// Get File Hash
-	fsha1, err := fileSHA1(filePath)
-	fileBlake2b, err := fileBlake2b(filePath)
-	logger.Debug("File Hashing Complete.",
-		zap.String("Filename", fileInfo.Name()),
-		zap.String("SHA1", fsha1),
-		zap.String("Blake2b", fileBlake2b),
-	)
-
-	// Create and Start Progress Bar
-	pbar := pb.New(int(fileInfo.Size())).SetUnits(pb.U_BYTES)
-	pbar.SetRefreshRate(time.Second)
-	pbar.ShowSpeed = true
-	pbar.ShowTimeLeft = true
-	pbar.Start()
-
-	// Create and Send Request
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", uploadURL.URL, pbar.NewProxyReader(file))
-	req.ContentLength = fileInfo.Size()
-	req.Header.Add("Authorization", uploadURL.AuthorizationToken)
-	req.Header.Add("Content-Type", "b2/x-auto")
-	req.Header.Add("X-Bz-Content-Sha1", fsha1)
-	req.Header.Add("X-Bz-File-Name", fileInfo.Name())
-	req.Header.Add("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", fileModTimeMillis))
-	req.Header.Add("X-Bz-Info-Content-Blake2b", fileBlake2b)
-	if err != nil {
-		logger.Fatal("Error creating upload request",
-			zap.Error(err),
-		)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		logger.Fatal("API Upload Request Error",
-			zap.String("File", filePath),
-			zap.Error(err),
-		)
-	}
-	pbar.Finish()
-
-	// Read Response Body
-	respBody, _ := ioutil.ReadAll(resp.Body)
-
-	// Check API Response
-	if resp.Status == "200 OK" {
-		var uploaded UploadedFile
-		err = json.Unmarshal(respBody, &uploaded)
-
-		if uploaded.ContentSha1 != fsha1 {
-			logger.Fatal("API Response SHA1 Hash Mismatch.",
-				zap.String("Local SHA1", fsha1),
-				zap.String("API SHA1", uploaded.ContentSha1),
-			)
-		}
-
-		fmt.Printf("\nUpload Complete \nFilename: %v \nFileID: %v\n", uploaded.FileName, uploaded.FileID)
-	} else {
-		requestDump, err := httputil.DumpRequest(req, true)
-		if err != nil {
-			logger.Warn("Could not dump HTTP request",
-				zap.Error(err),
-			)
-		}
-		fmt.Printf("\nRequest: %v\n", string(requestDump))
-		logger.Fatal("Could not upload file",
-			zap.String("API Resp Body", string(respBody)),
-		)
-		responseDump, err := httputil.DumpResponse(resp, true)
-		if err != nil {
-			logger.Warn("Could not dump HTTP response",
-				zap.Error(err),
-			)
-		}
-		fmt.Printf("\nResponse: %v\n", string(responseDump))
-
-	}
+	return
 
 }
 

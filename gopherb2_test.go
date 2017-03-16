@@ -41,7 +41,7 @@ func TestToUploadNewStandardB2File(t *testing.T) {
 
 // TestToReturnNewLargeB2File
 func TestToReturnNewLargeB2File(t *testing.T) {
-	b2F, err := NewB2File("/Users/dsjr2006/Downloads/LibreOffice_5.3.0_MacOS_x86-64.dmg")
+	b2F, err := NewB2File("/Users/dsjr2006/Downloads/megan@allaboutent.com.zip")
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 		return
@@ -52,6 +52,12 @@ func TestToReturnNewLargeB2File(t *testing.T) {
 	}
 	fmt.Printf("\nFile Blake2b: %v", b2F.Blake2b)
 	fmt.Println("\n^ New Large B2 File Test Completed\n")
+
+	fmt.Println("Upload Test..")
+	err = b2F.Upload("b6ee61624837a6c6588b0715")
+	if err != nil {
+		fmt.Printf("Could not upload file. Error: %v", err)
+	}
 	return
 }
 
