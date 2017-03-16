@@ -1,6 +1,7 @@
 package gopherb2
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -192,7 +193,22 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 	}
 	// Multi-part Upload if greather than one piece
 	fmt.Println("Starting multi-part upload")
-
+	file, err := os.Open(b2F.Filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	// Send start request to API and check response
+	b2StartLgFile, err := b2F.startB2LargeFile(bucketID)
+	if err != nil {
+		log.Fatal("Start large file failed", err)
+	}
+	fmt.Printf("%v", b2StartLgFile) // TODO: Remove this
+	// create progress bar pool
+	pbpool, err := pb.StartPool()
+	if err != nil {
+		logger.Fatal("Could not start Progress Bar pool")
+	}
 	// create task channel
 	filePieces := make(chan B2FilePiece)
 	go func() {
@@ -216,7 +232,20 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 			defer wg.Done()
 
 			for p := range filePieces {
+				// Progress Bar
+				pbar := pb.New64(p.Size).SetUnits(pb.U_BYTES)
+				pbar.SetRefreshRate(time.Second)
+				pbar.Prefix(fmt.Sprintf("Part %v of %v", p.PieceNum+1, len(b2F.Piece)))
+				pbar.ShowSpeed = true
+				pbar.ShowTimeLeft = true
+				pbpool.Add(pbar)
+
+				// Get Upload Part URL & AuthorizationToken
+				time.Sleep(time.Second)
+				// Attempt Upload
+				time.Sleep(10 * time.Second)
 				fmt.Printf("Thread #%v Piece ID: %v Size: %v SHA1: %v\n", id, p.PieceNum, p.Size, p.SHA1)
+
 				results <- "done"
 			}
 		}(i)
@@ -226,6 +255,7 @@ func (b2F *UpToB2File) Upload(bucketID string) error {
 	for r := range results {
 		fmt.Printf("%v\n", r)
 	}
+	pbpool.Stop()
 
 	return nil
 }
@@ -316,4 +346,43 @@ func (b2F *UpToB2File) getBlakeb2() error {
 	b2F.Blake2b = hex.EncodeToString(hashAsBytes)
 
 	return nil
+}
+func (b2F *UpToB2File) startB2LargeFile(bucketID string) (B2File, error) {
+	// Authorize
+	apiAuth := B2AuthorizeAccount()
+
+	// Create client
+	client := &http.Client{}
+	// Request Body : JSON object
+	jsonBody := []byte(`{"fileInfo": {"large_file_sha1": "` + b2F.SHA1 + `","src_last_modified_millis": "` + fmt.Sprintf("%d", b2F.LastModMillis) + `"},"bucketId": "` + bucketID + `","fileName": "` + b2F.Filename + `","contentType": "b2/x-auto"}`)
+	body := bytes.NewBuffer(jsonBody)
+
+	// Create request
+	req, err := http.NewRequest("POST", "https://api001.backblazeb2.com/b2api/v1/b2_start_large_file", body)
+
+	// Headers
+	req.Header.Add("Authorization", apiAuth.AuthorizationToken)
+
+	// Fetch Request
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Failure : ", err)
+	}
+
+	// Read Response Body
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	var apiResponse Response
+	apiResponse = Response{Header: resp.Header, Status: resp.Status, Body: respBody}
+
+	// Parse API Response File Info to B2File if request is successful
+	var b2File B2File
+	if apiResponse.Status == "200 OK" {
+		err = json.Unmarshal(apiResponse.Body, &b2File)
+		if err != nil {
+			log.Fatalf("File JSON parse failed. Error: %v", err)
+		}
+		return b2File, nil
+	}
+	return b2File, err
 }
