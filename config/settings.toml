@@ -1,0 +1,6 @@
+# BackBlaze B2 API credentials
+# You will need to get these from the BackBlaze API Dashboard
+[Account1]
+  AcctID = "000"
+  AppID = "000"
+  APIURL = "https://api.backblazeb2.com/b2api/v1/"
