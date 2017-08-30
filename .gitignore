@@ -2,3 +2,6 @@
 .vscode/settings.json
 
 .vscode/launch.json
+config/settings.toml
+
+config/settings.toml
