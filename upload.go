@@ -59,7 +59,7 @@ type UploadedFile struct {
 }
 
 // UploadFile transmits file at given path to B2 Storage
-func UploadFile(bucketID string, filePath string) {
+func UploadFile(bucketID string, filePath string) error {
 	// Determine Upload Method
 	file, err := os.Stat(filePath)
 
@@ -79,7 +79,7 @@ func UploadFile(bucketID string, filePath string) {
 		LargeFileUpload(bucketID, filePath)
 	}
 
-	return
+	return err
 }
 func b2UploadStdFile(bucketID string, filePath string) {
 	b2F, err := NewB2File(filePath)

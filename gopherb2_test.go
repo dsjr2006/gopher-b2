@@ -109,8 +109,12 @@ func TestToReturnUploadURL(t *testing.T) {
 
 // Test uploadFile
 func TestToUploadFile(t *testing.T) {
-	UploadFile("b6ee61624837a6c6588b0715",
+	err := UploadFile("b6ee61624837a6c6588b0715",
 		"/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/testfile.txt")
+	if err != nil {
+		fmt.Println("\n^ Upload File Test *Failed*")
+		return
+	}
 	fmt.Println("\n^ Upload File Test Completed\n ")
 }
 
