@@ -7,50 +7,57 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/spf13/viper"
 	"github.com/uber-go/zap"
 )
 
+// APIAuthorization.Minimum Part Size deprecated and will match recommended part size
 type APIAuthorization struct {
-	AccountID          string `json:"accountId"`
-	ApiURL             string `json:"apiUrl"`
-	AuthorizationToken string `json:"authorizationToken"`
-	DownloadURL        string `json:"downloadURL"`
-	MinimumPartSize    int    `json:"minimumPartSize"`
+	AccountID           string `json:"accountId"`
+	ApiURL              string `json:"apiUrl"`
+	AuthorizationToken  string `json:"authorizationToken"`
+	DownloadURL         string `json:"downloadURL"`
+	MinimumPartSize     int    `json:"minimumPartSize"`
+	RecommendedPartSize int    `json:"recommendedPartSize"`
+	AbsoluteMinPartSize int    `json:"absoluteMinimumPartSize"`
 }
 
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct
-func B2AuthorizeAccount() APIAuthorization {
+func AuthorizeAcct() APIAuthorization {
 	var Config Configuration
-	viper.SetConfigName("settings")  // no need to include file extension
-	viper.AddConfigPath("../config") // set the path of your config file
+	viper.SetConfigName("settings")                                    // no need to include file extension
+	viper.AddConfigPath("$GOPATH/src/github.com/dwin/gopherb2/config") // set the path of your config file
 	err := viper.ReadInConfig()
 	viper.AddConfigPath("config") // set the path of your config file
 	err = viper.ReadInConfig()
 	if err != nil {
-		logger.Fatal("No Configuration file found, Cannot Attempt Authorization with API.")
+		logger.Debug("No Configuration file found, Cannot Attempt Authorization with API. Checking ENV.")
+		Config.AcctID = os.Getenv("B2AcctID")
+		Config.AppID = os.Getenv("B2AppID")
+		Config.APIURL = os.Getenv("B2APIURL")
 	} else {
-		Config.ACCOUNT_ID = viper.GetString("Account1.ACCOUNT_ID")
+		Config.AcctID = viper.GetString("Account1.AcctID")
 		logger.Debug("Obtained Account ID from Configuration file",
-			zap.String("Account ID:", Config.ACCOUNT_ID),
+			zap.String("Account ID:", Config.AcctID),
 		)
-		Config.APPLICATION_ID = viper.GetString("Account1.APPLICATION_ID")
+		Config.AppID = viper.GetString("Account1.AppID")
 		logger.Debug("Obtained Account ID from Configuration file",
-			zap.String("Application ID:", Config.APPLICATION_ID),
+			zap.String("Application ID:", Config.AppID),
 		)
-		Config.API_URL = viper.GetString("Account1.API_URL")
+		Config.APIURL = viper.GetString("Account1.APIURL")
 		logger.Debug("Obtained Account ID from Configuration file",
-			zap.String("API URL:", Config.API_URL),
+			zap.String("API URL:", Config.APIURL),
 		)
 	}
-	if Config.ACCOUNT_ID == "000" {
+	if Config.AcctID == "" {
 		logger.Fatal("Account ID set to default. Update with your Account Id from Backblaze Settings.")
-	} else if Config.APPLICATION_ID == "000" {
+	} else if Config.AppID == "" {
 		logger.Fatal("Application ID set to default. Update with your Application Id from Backblaze Settings.")
 	}
 	// Encode credentials to base64
-	credentials := base64.StdEncoding.EncodeToString([]byte(Config.ACCOUNT_ID + ":" + Config.APPLICATION_ID))
+	credentials := base64.StdEncoding.EncodeToString([]byte(Config.AcctID + ":" + Config.AppID))
 
 	// Request (POST https://api.backblazeb2.com/b2api/v1/b2_authorize_account)
 	body := bytes.NewBuffer([]byte(`{}`))
@@ -60,7 +67,7 @@ func B2AuthorizeAccount() APIAuthorization {
 	client := &http.Client{}
 
 	// Create request
-	req, err := http.NewRequest("POST", Config.API_URL+"b2_authorize_account", body)
+	req, err := http.NewRequest("POST", Config.APIURL+"b2_authorize_account", body)
 	if err != nil {
 		logger.Fatal("Creating API Auth Request Failed.",
 			zap.Error(err),
@@ -102,10 +109,10 @@ func B2AuthorizeAccount() APIAuthorization {
 	}
 
 	// Check API Response matches config
-	if apiAuth.AccountID != Config.ACCOUNT_ID {
+	if apiAuth.AccountID != Config.AcctID {
 		logger.Fatal("API Account ID Response does not match Account ID in Config.",
 			zap.String("API Resp Acct ID", apiAuth.AccountID),
-			zap.String("Config Acct ID", Config.ACCOUNT_ID),
+			zap.String("Config Acct ID", Config.AcctID),
 		)
 	}
 
@@ -115,7 +122,7 @@ func B2AuthorizeAccount() APIAuthorization {
 // Requests Upload URL from API and returns 'UploadURL'
 func B2GetUploadURL(bucketId string) UploadURL {
 	// Authorize and Get API Token
-	authorizationResponse := B2AuthorizeAccount()
+	authorizationResponse := AuthorizeAcct()
 
 	// Get Upload URL (POST https://api001.backblazeb2.com/b2api/v1/b2_get_upload_url)
 
@@ -162,7 +169,7 @@ func B2GetUploadURL(bucketId string) UploadURL {
 }
 
 func B2FinishLargeFile(largeFile LargeFile) error {
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Create SHA1 array of completed files
 	var partSha1Array string
@@ -217,7 +224,7 @@ func B2FinishLargeFile(largeFile LargeFile) error {
 }
 
 func B2GetUploadPartURL(fileId string) UploadPartResponse {
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Create client
 	client := &http.Client{}

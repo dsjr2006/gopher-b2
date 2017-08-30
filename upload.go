@@ -60,7 +60,7 @@ type UploadedFile struct {
 }
 
 // UploadFile transmits file at given path to B2 Storage
-func UploadFile(bucketID string, filePath string) {
+func UploadFile(bucketID string, filePath string) error {
 	// Determine Upload Method
 	file, err := os.Stat(filePath)
 
@@ -77,10 +77,10 @@ func UploadFile(bucketID string, filePath string) {
 		b2UploadStdFile(bucketID, filePath)
 	} else {
 		log.Debug("Sending file to Large upload")
-		B2LargeFileUpload(bucketID, filePath)
+		LargeFileUpload(bucketID, filePath)
 	}
 
-	return
+	return err
 }
 func b2UploadStdFile(bucketID string, filePath string) {
 	// Authorize and Get Upload URL
@@ -185,7 +185,7 @@ func b2UploadStdFile(bucketID string, filePath string) {
 
 }
 
-func B2LargeFileUpload(bucketID string, filePath string) {
+func LargeFileUpload(bucketID string, filePath string) {
 	// Open File and Get File Stats
 	file, err := os.Open(filePath)
 	defer file.Close()
@@ -246,7 +246,7 @@ func B2LargeFileUpload(bucketID string, filePath string) {
 // Begin Large File Upload
 func B2StartLargeFile(bucketID string, filePath string) (Response, B2File) {
 	// Authorize
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Open File and Get File Stats
 	file, err := os.Open(filePath)
@@ -316,14 +316,14 @@ func uploadParts(largeFile LargeFile) {
 	}
 	for i := 0; i < len(largeFile.Temp); i++ {
 		wg.Add(1)
-		go B2UploadPart(largeFile, i, &wg, pbpool)
+		go UploadPart(largeFile, i, &wg, pbpool)
 	}
 	wg.Wait()
 	pbpool.Stop()
 
 	return
 }
-func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup, pbpool *pb.Pool) {
+func UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup, pbpool *pb.Pool) {
 	defer wg.Done()
 	logger.Info("Starting Upload of Part",
 		zap.Int("B2 Part #", pieceNum+1),
@@ -379,7 +379,7 @@ func B2UploadPart(largeFile LargeFile, pieceNum int, wg *sync.WaitGroup, pbpool 
 			zap.String("Filename", largeFile.Name),
 			zap.Int("B2 Piece Num", int(pieceNum+1)),
 			zap.String("Piece Path", largeFile.Temp[pieceNum].Path),
-			zap.String("Respone Body", string(apiResponse.Body)),
+			zap.String("Response Body", string(apiResponse.Body)),
 		)
 		largeFile.Temp[pieceNum].UploadStatus = "Success"
 	}

@@ -1,0 +1,15 @@
+{
+  "accountId": "6e1287668b75",
+  "action": "upload",
+  "bucketId": "b6ee61624837a6c6588b0715",
+  "contentLength": 3217,
+  "contentSha1": "3338698eacdd86f802d94e7233655624f04ef366",
+  "contentType": "text/plain",
+  "fileId": "4_zb6ee61624837a6c6588b0715_f1072ec5aea56b155_d20170113_m052122_c001_v0001037_t0005",
+  "fileInfo": {
+    "content-blake2b": "b5103f8188684812d5cbf04d7b98101e296b7bbdd26db83ba8d867adb156e2b57d8d7b34ed44ada2013655b64aace0076ce574b3b97634837ab85f023a5f396f",
+    "src_last_modified_millis": "1484035100000"
+  },
+  "fileName": "testfile.txt",
+  "uploadTimestamp": 1484284882000
+}

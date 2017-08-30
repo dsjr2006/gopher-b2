@@ -1,9 +1,9 @@
 package gopherb2
 
 import (
-    "time"
-    "github.com/boltdb/bolt"
+	"github.com/boltdb/bolt"
 	"github.com/uber-go/zap"
+	"time"
 )
 
 type boltDB struct {
@@ -14,9 +14,9 @@ type boltDB struct {
 func openDB(file string) (*boltDB, error) {
 	db, err := bolt.Open(file, 0600, &bolt.Options{Timeout: 2 * time.Second})
 	if err != nil {
-        logger.Warn("Could not open boltdb file",
-            zap.Error(err),
-        )
+		logger.Warn("Could not open boltdb file",
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -25,7 +25,6 @@ func openDB(file string) (*boltDB, error) {
 	})
 	return &boltDB{DB: db}, err
 }
-
 
 /*
 boltdb, err := bolt.Open("gopherb2.db", 0600, nil)
