@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/spf13/viper"
 	"github.com/uber-go/zap"
@@ -24,15 +25,18 @@ type APIAuthorization struct {
 }
 
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct
-func B2AuthorizeAccount() APIAuthorization {
+func AuthorizeAcct() APIAuthorization {
 	var Config Configuration
-	viper.SetConfigName("settings")  // no need to include file extension
-	viper.AddConfigPath("../config") // set the path of your config file
+	viper.SetConfigName("settings")                                    // no need to include file extension
+	viper.AddConfigPath("$GOPATH/src/github.com/dwin/gopherb2/config") // set the path of your config file
 	err := viper.ReadInConfig()
 	viper.AddConfigPath("config") // set the path of your config file
 	err = viper.ReadInConfig()
 	if err != nil {
-		logger.Fatal("No Configuration file found, Cannot Attempt Authorization with API.")
+		logger.Debug("No Configuration file found, Cannot Attempt Authorization with API. Checking ENV.")
+		Config.AcctID = os.Getenv("B2AcctID")
+		Config.AppID = os.Getenv("B2AppID")
+		Config.APIURL = os.Getenv("B2APIURL")
 	} else {
 		Config.AcctID = viper.GetString("Account1.AcctID")
 		logger.Debug("Obtained Account ID from Configuration file",
@@ -47,9 +51,9 @@ func B2AuthorizeAccount() APIAuthorization {
 			zap.String("API URL:", Config.APIURL),
 		)
 	}
-	if Config.AcctID == "000" {
+	if Config.AcctID == "" {
 		logger.Fatal("Account ID set to default. Update with your Account Id from Backblaze Settings.")
-	} else if Config.AppID == "000" {
+	} else if Config.AppID == "" {
 		logger.Fatal("Application ID set to default. Update with your Application Id from Backblaze Settings.")
 	}
 	// Encode credentials to base64
@@ -118,7 +122,7 @@ func B2AuthorizeAccount() APIAuthorization {
 // Requests Upload URL from API and returns 'UploadURL'
 func B2GetUploadURL(bucketId string) UploadURL {
 	// Authorize and Get API Token
-	authorizationResponse := B2AuthorizeAccount()
+	authorizationResponse := AuthorizeAcct()
 
 	// Get Upload URL (POST https://api001.backblazeb2.com/b2api/v1/b2_get_upload_url)
 
@@ -165,7 +169,7 @@ func B2GetUploadURL(bucketId string) UploadURL {
 }
 
 func B2FinishLargeFile(largeFile LargeFile) error {
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Create SHA1 array of completed files
 	var partSha1Array string
@@ -220,7 +224,7 @@ func B2FinishLargeFile(largeFile LargeFile) error {
 }
 
 func B2GetUploadPartURL(fileId string) UploadPartResponse {
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Create client
 	client := &http.Client{}

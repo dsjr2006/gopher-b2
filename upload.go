@@ -156,7 +156,7 @@ func LargeFileUpload(bucketID string, filePath string) {
 // Begin Large File Upload
 func B2StartLargeFile(bucketID string, filePath string) (Response, B2File) {
 	// Authorize
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Open File and Get File Stats
 	file, err := os.Open(filePath)

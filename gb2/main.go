@@ -9,7 +9,7 @@ import (
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/dwin/gopherb2"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 )
 
 var (
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	app := cli.NewApp()
-	app.Name = "gopherb2"
+	app.Name = "gb2"
 	app.Version = "0.1.0"
 	app.Description = "Application for managing and interacting with Backblaze B2"
 	app.Usage = "[global options] command [command options] [arguments...]"
@@ -44,7 +44,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "log",
-			Usage:       "gopherb2 -log `gopher.log`",
+			Usage:       "gb2 -log `gopher.log`",
 			Destination: &logDest,
 		},
 		cli.BoolFlag{

@@ -67,7 +67,7 @@ func TestToReturnNewLargeB2File(t *testing.T) {
 
 // Test authorizeAccount
 func TestToReturnAuthorization(t *testing.T) {
-	apiResponse := B2AuthorizeAccount()
+	apiResponse := AuthorizeAcct()
 	fmt.Println("\nAccount ID: " + apiResponse.AccountID)
 	fmt.Println("\n^ Authorization Test Completed\n ")
 }

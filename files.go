@@ -30,7 +30,7 @@ type file struct {
 // B2ListFilenames lists all files
 func B2ListFilenames(bucketId string, startFile string) {
 	// Authorize and Get API Token
-	authorizationResponse := B2AuthorizeAccount()
+	authorizationResponse := AuthorizeAcct()
 
 	// Create & Fetch Request
 	resp, err := resty.R().

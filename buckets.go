@@ -42,7 +42,7 @@ func B2CreateBucket(bucketName string, bucketPublic bool) {
 	}
 
 	// Authorize and Get API Token
-	authorizationResponse := B2AuthorizeAccount()
+	authorizationResponse := AuthorizeAcct()
 
 	// Request (POST https://api001.backblazeb2.com/b2api/v1/b2_create_bucket)
 
@@ -98,7 +98,7 @@ func B2CreateBucket(bucketName string, bucketPublic bool) {
 // B2GetBuckets calls authorizeAccount then connects to API to request list of all B2 buckets and information, returns type 'Buckets' and error
 func GetBuckets() (Buckets, error) {
 	// Authorize and Get API Token
-	authorizationResponse := B2AuthorizeAccount()
+	authorizationResponse := AuthorizeAcct()
 
 	// Request (POST https://api001.backblazeb2.com/b2api/v1/b2_list_buckets)
 	jsonData := []byte(`{"accountId": "` + authorizationResponse.AccountID + `"}`)

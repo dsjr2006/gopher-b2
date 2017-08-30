@@ -408,7 +408,7 @@ func (b2F *UpToB2File) getBlakeb2() error {
 }
 func (b2F *UpToB2File) startB2LargeFile(bucketID string) (B2File, error) {
 	// Authorize
-	apiAuth := B2AuthorizeAccount()
+	apiAuth := AuthorizeAcct()
 
 	// Create client
 	client := &http.Client{}
