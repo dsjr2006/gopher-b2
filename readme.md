@@ -2,6 +2,9 @@
 GopherB2 is a basic library for interacting with Backblaze B2 Storage in Golang
 
 - [Overview](#overview)
+- [Backblaze B2 Credentials](#backblaze-b2-credentials)
+  - [Environmental Variables](#environmental-variables)
+  - [Configuration File](#configuration-file)
 - [Command Line App](#command-line-app)
   - [Install](#cli-install)
   - [Usage](#cli-usage)
@@ -18,7 +21,9 @@ GopherB2 is a basic library for interacting with Backblaze B2 Storage in Golang
 
 ## Backblaze B2 Credentials
 
-Must set in Configuration file or with OS Environment variables
+API credentials must be set in Configuration file or with OS Environment variables. The API URL below is the correct URL as of writing (2017-Aug). You will need to obtain API credentials from the B2 Dashboard. Go to [https://secure.backblaze.com/b2_buckets.htm](https://secure.backblaze.com/b2_buckets.htm), then click 'Show Account ID and Application Key".
+
+### Environment Variables
 
 You can environment variables for gopherb2 to authorize with the Backblaze B2 API. The application will expect the following:
 
@@ -33,6 +38,8 @@ export B2AcctID=123464abc
 export B2AppID=456789ddffgghhii
 export B2APIURL=https://api.backblazeb2.com/b2api/v1/
 ```
+
+### Configuration File
 
 You can also set the necessary credentials in ```$GOPATH/src/github.com/dwin/gopherb2/config``` :
 
@@ -50,8 +57,6 @@ You should see a file that appears like the example below that you will need to 
   AppID = "001f38150dfsdgfdsgdfsg80c23b9"
   APIURL = "https://api.backblazeb2.com/b2api/v1/"
 ```
-
-> The URL above is the correct URL as of writing. You will need to obtain other credentials from the B2 Dashboard ([https://secure.backblaze.com/b2_buckets.htm](https://secure.backblaze.com/b2_buckets.htm)), then click 'Show Account ID and Application Key".
 
 ---
 
@@ -121,6 +126,26 @@ GLOBAL OPTIONS:
 ---
 
 ## Library Usage
+
+Use ```go get``` to obtain gopherb2 library
+
+```bash
+go get github.com/dwin/gopherb2
+```
+
+Import into project
+
+```go
+import (
+    "github.com/dwin/gopherb2"
+)
+func main() {
+    err := UploadFile("bucket-id","~/test_file.txt")
+    if err != nil {
+        // Handle error
+    }
+}
+```
 
 ---
 
