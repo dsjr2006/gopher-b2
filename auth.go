@@ -12,12 +12,15 @@ import (
 	"github.com/uber-go/zap"
 )
 
+// APIAuthorization.Minimum Part Size deprecated and will match recommended part size
 type APIAuthorization struct {
-	AccountID          string `json:"accountId"`
-	ApiURL             string `json:"apiUrl"`
-	AuthorizationToken string `json:"authorizationToken"`
-	DownloadURL        string `json:"downloadURL"`
-	MinimumPartSize    int    `json:"minimumPartSize"`
+	AccountID           string `json:"accountId"`
+	ApiURL              string `json:"apiUrl"`
+	AuthorizationToken  string `json:"authorizationToken"`
+	DownloadURL         string `json:"downloadURL"`
+	MinimumPartSize     int    `json:"minimumPartSize"`
+	RecommendedPartSize int    `json:"recommendedPartSize"`
+	AbsoluteMinPartSize int    `json:"absoluteMinimumPartSize"`
 }
 
 // Calling this function reads settings.toml file in "/config" , calls B2 API , then returns the response as APIAuthorization struct

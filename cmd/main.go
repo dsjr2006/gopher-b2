@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/dsjr2006/gopherb2"
+	"github.com/dwin/gopherb2"
 	"github.com/urfave/cli"
 )
 

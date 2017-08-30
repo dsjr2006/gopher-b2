@@ -42,6 +42,8 @@ type B2FilePiece struct {
 	Status   string
 }
 
+// Pointer to buffer?
+
 func NewB2File(path string) (UpToB2File, error) {
 	var b2F UpToB2File
 	b2F.Filepath = path

@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// TODO: Create test files programatically
+
 // TestToReturnNewB2File does that
 func TestToReturnNewB2File(t *testing.T) {
 	b2F, err := NewB2File("/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/testfile.txt")
@@ -58,6 +60,7 @@ func TestToReturnNewLargeB2File(t *testing.T) {
 	err = b2F.Upload("b6ee61624837a6c6588b0715")
 	if err != nil {
 		fmt.Printf("Could not upload file. Error: %v", err)
+		fmt.Println("Could not complete Large B2 File Test.")
 	}
 	return
 }
