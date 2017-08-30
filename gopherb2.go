@@ -33,9 +33,9 @@ var (
 )
 
 type Configuration struct {
-	ACCOUNT_ID     string
-	APPLICATION_ID string
-	API_URL        string
+	AcctID string
+	AppID  string
+	APIURL string
 }
 type Response struct {
 	Header http.Header

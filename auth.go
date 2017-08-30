@@ -34,26 +34,26 @@ func B2AuthorizeAccount() APIAuthorization {
 	if err != nil {
 		logger.Fatal("No Configuration file found, Cannot Attempt Authorization with API.")
 	} else {
-		Config.ACCOUNT_ID = viper.GetString("Account1.ACCOUNT_ID")
+		Config.AcctID = viper.GetString("Account1.AcctID")
 		logger.Debug("Obtained Account ID from Configuration file",
-			zap.String("Account ID:", Config.ACCOUNT_ID),
+			zap.String("Account ID:", Config.AcctID),
 		)
-		Config.APPLICATION_ID = viper.GetString("Account1.APPLICATION_ID")
+		Config.AppID = viper.GetString("Account1.AppID")
 		logger.Debug("Obtained Account ID from Configuration file",
-			zap.String("Application ID:", Config.APPLICATION_ID),
+			zap.String("Application ID:", Config.AppID),
 		)
-		Config.API_URL = viper.GetString("Account1.API_URL")
+		Config.APIURL = viper.GetString("Account1.APIURL")
 		logger.Debug("Obtained Account ID from Configuration file",
-			zap.String("API URL:", Config.API_URL),
+			zap.String("API URL:", Config.APIURL),
 		)
 	}
-	if Config.ACCOUNT_ID == "000" {
+	if Config.AcctID == "000" {
 		logger.Fatal("Account ID set to default. Update with your Account Id from Backblaze Settings.")
-	} else if Config.APPLICATION_ID == "000" {
+	} else if Config.AppID == "000" {
 		logger.Fatal("Application ID set to default. Update with your Application Id from Backblaze Settings.")
 	}
 	// Encode credentials to base64
-	credentials := base64.StdEncoding.EncodeToString([]byte(Config.ACCOUNT_ID + ":" + Config.APPLICATION_ID))
+	credentials := base64.StdEncoding.EncodeToString([]byte(Config.AcctID + ":" + Config.AppID))
 
 	// Request (POST https://api.backblazeb2.com/b2api/v1/b2_authorize_account)
 	body := bytes.NewBuffer([]byte(`{}`))
@@ -63,7 +63,7 @@ func B2AuthorizeAccount() APIAuthorization {
 	client := &http.Client{}
 
 	// Create request
-	req, err := http.NewRequest("POST", Config.API_URL+"b2_authorize_account", body)
+	req, err := http.NewRequest("POST", Config.APIURL+"b2_authorize_account", body)
 	if err != nil {
 		logger.Fatal("Creating API Auth Request Failed.",
 			zap.Error(err),
@@ -105,10 +105,10 @@ func B2AuthorizeAccount() APIAuthorization {
 	}
 
 	// Check API Response matches config
-	if apiAuth.AccountID != Config.ACCOUNT_ID {
+	if apiAuth.AccountID != Config.AcctID {
 		logger.Fatal("API Account ID Response does not match Account ID in Config.",
 			zap.String("API Resp Acct ID", apiAuth.AccountID),
-			zap.String("Config Acct ID", Config.ACCOUNT_ID),
+			zap.String("Config Acct ID", Config.AcctID),
 		)
 	}
 
