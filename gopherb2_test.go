@@ -132,7 +132,7 @@ func TestToGetUploadPartURL(t *testing.T) {
 }
 
 
-// Test B2LargeFileUpload
+// Test LargeFileUpload
 func TestToUploadFile(t *testing.T) {
 	UploadFile("b6ee61624837a6c6588b0715", "/Users/dsjr2006/Dev/golang/src/github.com/dsjr2006/gopherb2/rbsp_launch_1080p.mp4")
 
