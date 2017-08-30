@@ -73,8 +73,15 @@ func TestToReturnAuthorization(t *testing.T) {
 }
 
 // Test listBuckets
-func TestToReturnBucketList(t *testing.T) {
-	B2ListBuckets()
+func TestToPrintBucketList(t *testing.T) {
+	buckets, err := GetBuckets()
+	if err != nil {
+		fmt.Println("Could not get buckets.")
+	}
+	err = PrintBuckets(buckets)
+	if err != nil {
+		fmt.Println("Could not display buckets.")
+	}
 	//fmt.Println("\nBuckets Response Body:\n" + string(apiResponse.Body))
 	fmt.Println("\n\n^ List Buckets Test Completed\n ")
 }

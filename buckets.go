@@ -3,9 +3,12 @@ package gopherb2
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"text/tabwriter"
 
 	"github.com/uber-go/zap"
 )
@@ -92,8 +95,8 @@ func B2CreateBucket(bucketName string, bucketPublic bool) {
 	return
 }
 
-// Calls authorizeAccount then connects to API to request list of all B2 buckets and information, returns type 'Buckets'
-func B2ListBuckets() {
+// B2GetBuckets calls authorizeAccount then connects to API to request list of all B2 buckets and information, returns type 'Buckets' and error
+func GetBuckets() (Buckets, error) {
 	// Authorize and Get API Token
 	authorizationResponse := B2AuthorizeAccount()
 
@@ -136,10 +139,28 @@ func B2ListBuckets() {
 	var buckets Buckets
 	err = json.Unmarshal(apiResponse.Body, &buckets)
 	if err != nil {
-		fmt.Println("Bucket JSON Parse Failed", err)
+		logger.Fatal("Bucket JSON Parse Failed",
+			zap.Error(err),
+		)
 	}
-	for i := 0; i < len(buckets.Bucket); i++ {
-		fmt.Printf("\n Bucket Id: %s\n Bucket Name: %s\n Type: %s\n", buckets.Bucket[i].BucketID, buckets.Bucket[i].BucketName, buckets.Bucket[i].BucketType)
+
+	return buckets, err
+}
+
+// PrintBuckets Diplays list of buckets in console
+func PrintBuckets(buckets Buckets) error {
+	if buckets.Bucket != nil {
+		writer := new(tabwriter.Writer)
+		fmt.Println("B2 Buckets")
+		// Format to '|' separated columns with no min width and blank padding char
+		writer.Init(os.Stdout, 0, 5, 1, ' ', 0)
+		fmt.Fprintln(writer, "-ID-\t -NAME-\t -TYPE-")
+		for i := 0; i < len(buckets.Bucket); i++ {
+			fmt.Fprintln(writer, buckets.Bucket[i].BucketID+"\t", buckets.Bucket[i].BucketName+"\t", buckets.Bucket[i].BucketType+"\t")
+		}
+		fmt.Fprintln(writer)
+		writer.Flush()
+		return nil
 	}
-	return
+	return errors.New("No Buckets to print")
 }

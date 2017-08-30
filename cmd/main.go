@@ -77,7 +77,14 @@ func main() {
 					Usage:       "[global] bucket list",
 					Description: "List all Buckets in Account",
 					Action: func(c *cli.Context) error {
-						gopherb2.B2ListBuckets()
+						buckets, err := gopherb2.GetBuckets()
+						if err != nil {
+							log.Fatal(err)
+						}
+						err = gopherb2.PrintBuckets(buckets)
+						if err != nil {
+							log.Fatal(err)
+						}
 						return nil
 					},
 				},
@@ -118,6 +125,16 @@ func main() {
 						return nil
 					},
 				},
+			},
+		},
+		{
+			Name:        "version",
+			Aliases:     []string{"v"},
+			Usage:       "Display version",
+			Description: "Display version",
+			Action: func(c *cli.Context) error {
+				fmt.Println("Version: " + app.Version)
+				return nil
 			},
 		},
 	}
